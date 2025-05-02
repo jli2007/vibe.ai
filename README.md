@@ -1,0 +1,1 @@
+## c# .net core + nextjs
