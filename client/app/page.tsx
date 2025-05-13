@@ -13,7 +13,7 @@ export default function Home() {
           <span className="p-2 m-2 text-2xl text-transparent bg-clip-text bg-linear-to-r from-green1 via-green2 to-green3 bg-size-200 animate-gradient-x">
             veyebe.ai
           </span>
-          <button className="p-1 m-3 px-5 text-lg border-1 border-green2/70 text-green2 cursor-pointer bg-green2/5" onClick={() => router.push('/app')}>
+          <button className="p-1 m-3 px-5 text-lg border-1 border-green2/70 text-green2 cursor-pointer bg-green2/5" onClick={() => router.push('/start')}>
             get started
           </button>
         </div>
