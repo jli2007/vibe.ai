@@ -1,35 +1,58 @@
 "use client";
 import { useEffect, useState } from "react";
-// import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import AlertFlash from "@/components/alert";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { AnimatePresence } from "motion/react";
 
 const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
+  const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
 
-  const { signInWithOAuth, user } = useAuth();
+  const { signInWithOAuth, user, signOut } = useAuth();
 
-  // const router = useRouter();
-
+  // set user on load if state is saved
   useEffect(() => {
     if (user) {
       setSignedIn(true);
     }
   }, [user]);
 
+  // remove # from url (supabase auth auto appends) and announce page state
+  useEffect(() => {
+    history.pushState(
+      "",
+      document.title,
+      window.location.pathname + window.location.search
+    );
+
+    if (
+      sessionStorage.getItem("redirectedAfterLogin") == "true" ||
+      signedIn == true
+    ) {
+      setShowAlert(true);
+    }
+  }, [signedIn]);
+
   async function signInWithSpotify() {
     const { data, error } = await signInWithOAuth({
       provider: "spotify",
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_HOST}/start`,
+      },
     });
     console.log(data);
     if (error) {
       console.error("ERROR IN SIGNIN", error);
     }
+
+    sessionStorage.setItem("redirectedAfterLogin", "true");
   }
 
   return (
@@ -37,11 +60,9 @@ const App = () => {
       <div className="flex justify-center w-full h-full">
         <div className="w-full h-full">
           <div className="w-[20%] h-full bg-stone-900 flex justify-start">
-            <div className="flex justify-end w-[97.5%] items-center">
-              {/* content */}
-            </div>
+            <div className="flex justify-end w-[97.5%] items-center"></div>
 
-            <Popover>
+            <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <Button className=" absolute right-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
                   {signedIn ? "sign out" : "sign in"}
@@ -51,25 +72,60 @@ const App = () => {
                 <div className="grid gap-7">
                   <div className="space-y-2">
                     <h4 className="font-medium leading-none flex items-center justify-center w-full">
-                      Connect Spotify to Veyebe
+                      {!signedIn
+                        ? "Connect Spotify to Veyebe"
+                        : "Disconnect Spotify to Veyebe"}
                     </h4>
                   </div>
 
                   <div className="flex items-center justify-center w-full my-5">
                     <Button
-                      onClick={() => signInWithSpotify()}
+                      onClick={() => {
+                        if (!signedIn) {
+                          signInWithSpotify();
+                        } else {
+                          signOut();
+                          setSignedIn(false);
+                          setOpen(false);
+                          setShowAlert(true);
+                        }
+                      }}
                       className="p-3 rounded-lg bg-stone-700/50"
                     >
-                      configure
+                      {!signedIn ? "configure" : "unconfigure"}
                     </Button>
                   </div>
                 </div>
               </PopoverContent>
             </Popover>
 
-            <button className=" absolute right-0 bottom-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
+            <AnimatePresence
+              initial={false}
+              // fixing the visibility issue (before fade out ends on alert component)
+              onExitComplete={() => {
+                setShowAlert(false);
+                sessionStorage.setItem("redirectedAfterLogin", "false");
+              }}
+            >
+              {showAlert && (
+                <>
+                  <AlertFlash
+                    message={
+                      sessionStorage.getItem("redirectedAfterLogin") == "true"
+                        ? "IN"
+                        : signedIn
+                        ? "STATE"
+                        : "OUT"
+                    }
+                    onClose={() => setShowAlert(false)}
+                  />
+                </>
+              )}
+            </AnimatePresence>
+
+            <Button className=" absolute right-0 bottom-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
               need help?
-            </button>
+            </Button>
           </div>
         </div>
       </div>
