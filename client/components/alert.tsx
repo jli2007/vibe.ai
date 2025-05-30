@@ -10,7 +10,7 @@ export default function AlertFlash({
   onClose: () => void;
 }) {
   useEffect(() => {
-    const id = setTimeout(onClose, 3000);
+    const id = setTimeout(onClose, 2000);
     return () => clearTimeout(id);
   }, [onClose]);
 

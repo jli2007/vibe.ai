@@ -13,6 +13,7 @@ import { AnimatePresence } from "motion/react";
 const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
+  const [username, setUsername] = useState<string>("");
   const [open, setOpen] = useState(false);
 
   const { signInWithOAuth, user, signOut } = useAuth();
@@ -21,6 +22,9 @@ const App = () => {
   useEffect(() => {
     if (user) {
       setSignedIn(true);
+
+      // call .net get spotify
+      setUsername("placeholder");
     }
   }, [user]);
 
@@ -44,7 +48,7 @@ const App = () => {
     const { data, error } = await signInWithOAuth({
       provider: "spotify",
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_HOST}/start`,
+        redirectTo: `${process.env.NEXT_PUBLIC_CLIENT_HOST}/start`,
       },
     });
     console.log(data);
@@ -57,14 +61,22 @@ const App = () => {
 
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
-      <div className="flex justify-center w-full h-full">
-        <div className="w-full h-full">
-          <div className="w-[20%] h-full bg-stone-900 flex justify-start">
-            <div className="flex justify-end w-[97.5%] items-center"></div>
+      <div className="flex justify-center flex-row w-full h-full">
+        <div className="w-[25%] h-full bg-stone-900 flex justify-start border-r">
+          <div className="w-full">
+            <h1 className="text-stone-100 p-2">
+              {username !== ""
+                ? "welcome " + username
+                : "sign in with spotify first"}
+            </h1>
+          </div>
+        </div>
 
+        <div className="w-[80%] h-full border-b">
+          <div className="w-full">
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
-                <Button className=" absolute right-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
+                <Button className="absolute right-0 top-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
                   {signedIn ? "sign out" : "sign in"}
                 </Button>
               </PopoverTrigger>

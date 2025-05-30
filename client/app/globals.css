@@ -148,6 +148,9 @@
   .border-r {
     @apply border border-red-500;
   }
+  .border-b {
+    @apply border border-blue-400;
+  }
 }
 
 * {

@@ -1,3 +1,5 @@
+// must rewrite into server .net
+
 import axios from "axios";
 
 export const useOpenAI = async (prompt: string) => {

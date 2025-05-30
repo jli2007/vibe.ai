@@ -1,12 +1,15 @@
-"use client"
-// spotify auth supabase
+"use client";
+
 import { PropsWithChildren, useState, useEffect } from "react";
-import { supabaseClient } from "@/supabase/supabaseClient";
+import { supabaseClient } from "@/integrations/supabase/supabaseClient";
+
 import { AuthUser } from "@supabase/supabase-js";
 import { AuthContext } from "./AuthContext";
 
 const signOut = supabaseClient.auth.signOut.bind(supabaseClient.auth);
-const signInWithOAuth = supabaseClient.auth.signInWithOAuth.bind(supabaseClient.auth);
+const signInWithOAuth = supabaseClient.auth.signInWithOAuth.bind(
+  supabaseClient.auth
+);
 
 export interface AuthProviderValue {
   supabase: typeof supabaseClient;
@@ -28,10 +31,12 @@ export default function AuthProvider({ children }: PropsWithChildren<{}>) {
       setUser(session?.user || null);
       setLoading(false);
 
-      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      });
+      supabaseClient.auth.onAuthStateChange(
+        async (_event: any, session: any) => {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      );
     };
     updateUser();
   }, []);
