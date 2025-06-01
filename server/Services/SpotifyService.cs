@@ -6,17 +6,16 @@ namespace server.Services
 {
     public static class SpotifyService
     {
-        public static Task<SpotifyClient> GetClientAsync()
+        public static Task<SpotifyClient> GetClientAsync(string AccessToken)
         {
-            var clientId = Environment.GetEnvironmentVariable("SPOTIFY_CLIENTID")!;
-            var spotify = new SpotifyClient(clientId);
+            var spotify = new SpotifyClient(AccessToken);
             return Task.FromResult(spotify);
         }
 
-        public static async Task<PrivateUser> GetCurrentUserProfileAsync()
+        public static async Task<PrivateUser> GetCurrentUserProfileAsync(string AccessToken)
         {
-            var spotify = await GetClientAsync();
-            return await spotify.UserProfile.Current(); // calls SpotifyAPI.Web endpoint
+            var spotify = await GetClientAsync(AccessToken);
+            return await spotify.UserProfile.Current();  // calls SpotifyAPI.Web endpoint
         }
     }
 }

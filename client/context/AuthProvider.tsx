@@ -2,7 +2,6 @@
 
 import { PropsWithChildren, useState, useEffect } from "react";
 import { supabaseClient } from "@/integrations/supabase/supabaseClient";
-
 import { AuthUser } from "@supabase/supabase-js";
 import { AuthContext } from "./AuthContext";
 

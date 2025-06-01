@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 
@@ -20,15 +21,12 @@ const App = () => {
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
   const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
 
-  const { signInWithOAuth, user, signOut } = useAuth();
+  const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
-  // set user on load if state is saved
+  // set user on load if state is saved // IS THIS NEEDED?
   useEffect(() => {
     if (user) {
       setSignedIn(true);
-
-      // call .net get spotify
-      setUsername("placeholder");
     }
   }, [user]);
 
@@ -51,7 +49,30 @@ const App = () => {
     ) {
       setShowAlert(true);
     }
-  }, [signedIn]);
+
+    const fetchSession = async () => {
+      const session = await supabase.auth.getSession();
+
+      console.log("SESSION", session);
+
+      const accessToken = session.data.session?.provider_token;
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken }),
+      });
+
+      const data = await res.json();
+
+      console.log("SPOTIFY FETCH DATA", data);
+      
+      setUsername(data.displayName)
+    }
+
+    fetchSession();
+
+  }, [signedIn, supabase]);
 
   async function signInWithSpotify() {
     const { data, error } = await signInWithOAuth({
@@ -101,7 +122,7 @@ const App = () => {
             </AnimatePresence>
           </div>
         )}
-        {!shouldRenderSpotifyPage && ( 
+        {!shouldRenderSpotifyPage && (
           <AnimatePresence>
             <motion.div
               key="arrow"
@@ -121,6 +142,11 @@ const App = () => {
 
         <div className="flex-1 flex flex-col">
           <div className="w-full h-full border-b">
+
+            <div className="w-full h-full flex items-end justify-center pb-5 text-white">
+              <Input className="w-[50%]" />
+            </div>
+
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button className="absolute right-0 top-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
@@ -173,8 +199,8 @@ const App = () => {
                       sessionStorage.getItem("redirectedAfterLogin") == "true"
                         ? "IN"
                         : signedIn
-                        ? "STATE"
-                        : "OUT"
+                          ? "STATE"
+                          : "OUT"
                     }
                     onClose={() => setShowAlert(false)}
                   />
