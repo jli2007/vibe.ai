@@ -8,13 +8,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
+import { ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 
 const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [username, setUsername] = useState<string>("");
-  const [open, setOpen] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
+  // pages
+  const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
 
   const { signInWithOAuth, user, signOut } = useAuth();
 
@@ -27,6 +31,11 @@ const App = () => {
       setUsername("placeholder");
     }
   }, [user]);
+
+  // ensures mounted/unmounted properly when the visibility of sidebar changes
+  useEffect(() => {
+    if (showSpotifyPage) setShouldRenderSpotifyPage(true);
+  }, [showSpotifyPage]);
 
   // remove # from url (supabase auth auto appends) and announce page state
   useEffect(() => {
@@ -62,19 +71,57 @@ const App = () => {
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
       <div className="flex justify-center flex-row w-full h-full">
-        <div className="w-[25%] h-full bg-stone-900 flex justify-start border-r">
-          <div className="w-full">
-            <h1 className="text-stone-100 p-2">
-              {username !== ""
-                ? "welcome " + username
-                : "sign in with spotify first"}
-            </h1>
+        {shouldRenderSpotifyPage && (
+          <div className="w-[25%] relative h-full overflow-hidden">
+            <AnimatePresence
+              onExitComplete={() => setShouldRenderSpotifyPage(false)} // unmounts AFTER exit animation (avoids unmounting DURING)
+            >
+              {showSpotifyPage && (  // condition as the motion.div must become removed/hidden for onexitcomplete to complete
+                <motion.div
+                  key="sidebar"
+                  initial={{ x: "-100%" }}
+                  animate={{ x: 0 }}
+                  exit={{ x: "-100%" }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute w-full h-full bg-stone-900 flex justify-start border-r"
+                >
+                  <div className="w-full flex justify-center">
+                    <ArrowLeftFromLine
+                      className="absolute text-stone-100/60 right-1 top-1/2 cursor-pointer"
+                      onClick={() => setShowSpotifyPage(false)}
+                    />
+                    <h1 className="text-stone-100 p-2">
+                      {username !== ""
+                        ? "welcome " + username
+                        : "sign in with spotify first"}
+                    </h1>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+        )}
+        {!shouldRenderSpotifyPage && ( 
+          <AnimatePresence>
+            <motion.div
+              key="arrow"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="absolute left-1 top-1/2"
+            >
+              <ArrowRightFromLine
+                className="text-stone-100/60 cursor-pointer"
+                onClick={() => setShowSpotifyPage(true)}  // changes sidebar visibility to true --> in turn MOUNTS it via useeffect
+              />
+            </motion.div>
+          </AnimatePresence>
+        )}
 
-        <div className="w-[80%] h-full border-b">
-          <div className="w-full">
-            <Popover open={open} onOpenChange={setOpen}>
+        <div className="flex-1 flex flex-col">
+          <div className="w-full h-full border-b">
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button className="absolute right-0 top-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
                   {signedIn ? "sign out" : "sign in"}
@@ -98,7 +145,7 @@ const App = () => {
                         } else {
                           signOut();
                           setSignedIn(false);
-                          setOpen(false);
+                          setPopoverOpen(false);
                           setShowAlert(true);
                         }
                       }}
@@ -113,8 +160,8 @@ const App = () => {
 
             <AnimatePresence
               initial={false}
-              // fixing the visibility issue (before fade out ends on alert component)
               onExitComplete={() => {
+                // fixing the visibility issue (before fade out ends on alert component)
                 setShowAlert(false);
                 sessionStorage.setItem("redirectedAfterLogin", "false");
               }}

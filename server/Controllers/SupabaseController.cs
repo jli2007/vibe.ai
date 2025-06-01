@@ -7,12 +7,12 @@ using server.Services;
 #pragma warning disable CA1050 // Declare types in namespaces
 public class SupabaseController : ControllerBase
 #pragma warning restore CA1050 // Declare types in namespaces
-{   
+{
     // http not required, placeholder
-    [HttpGet("connect")] 
+    [HttpGet("connect")]
     public async Task<IActionResult> ConnectClient()
     {
         var client = await SupabaseClientService.GetClientAsync();
-        return Ok(client); 
+        return Ok(client);
     }
 }

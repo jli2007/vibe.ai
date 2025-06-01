@@ -1,4 +1,4 @@
-// its viable to expose the anon and client key in client
+// connects client to supabase services --> viable to expose anon+client key without consequence.
 
 import { createClient } from "@supabase/supabase-js";
 

@@ -1,4 +1,5 @@
 using dotenv.net;
+using server.Services;
 
 // load .env
 DotEnv.Load();
@@ -20,7 +21,7 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
-
+// builder.Services.AddScoped<ISpotifyService, SpotifyService>();
 var app = builder.Build();
 
 app.UseHttpsRedirection();

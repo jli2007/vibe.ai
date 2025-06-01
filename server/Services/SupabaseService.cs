@@ -39,7 +39,12 @@ namespace server.Services
         }
     }
 
-    public static class SupabaseTableService
+    public static class SupabaseConversationService
+    {
+        // ??????
+    }
+
+    public static class SupabaseMessageService
     {
         // ??????
     }

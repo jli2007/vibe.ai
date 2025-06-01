@@ -14,6 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <link rel="icon" href="/veyebe.png" />
       <body className="antialiased font-railway">
         {" "}
         <AuthProvider>{children} </AuthProvider>
