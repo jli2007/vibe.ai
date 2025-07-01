@@ -7,19 +7,30 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
+import {
+  ArrowLeftFromLine,
+  ArrowRightFromLine,
+  SendHorizontal,
+} from "lucide-react";
 
 const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
-  const [username, setUsername] = useState<string>("");
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
+
+  // info
+  const [username, setUsername] = useState<string>("");
+  const [pfp, setPfp] = useState<string>("/noProfile.png");
+  const [input, setInput] = useState<string>("");
+
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
+    useState(showSpotifyPage);
 
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
@@ -57,21 +68,24 @@ const App = () => {
 
       const accessToken = session.data.session?.provider_token;
 
-      const res = await fetch(`${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accessToken }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken }),
+        }
+      );
 
       const data = await res.json();
 
       console.log("SPOTIFY FETCH DATA", data);
-      
-      setUsername(data.displayName)
-    }
+
+      setUsername(data.displayName);
+      setPfp(data.images[1].url);
+    };
 
     fetchSession();
-
   }, [signedIn, supabase]);
 
   async function signInWithSpotify() {
@@ -89,6 +103,21 @@ const App = () => {
     sessionStorage.setItem("redirectedAfterLogin", "true");
   }
 
+  // sends input to openai
+  const sendInput = async () => {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      }
+    );
+
+    const data = res.json();
+    console.log(data);
+  };
+
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
       <div className="flex justify-center flex-row w-full h-full">
@@ -97,7 +126,7 @@ const App = () => {
             <AnimatePresence
               onExitComplete={() => setShouldRenderSpotifyPage(false)} // unmounts AFTER exit animation (avoids unmounting DURING)
             >
-              {showSpotifyPage && (  // condition as the motion.div must become removed/hidden for onexitcomplete to complete
+              {showSpotifyPage && ( // condition as the motion.div must become removed/hidden for onexitcomplete to complete
                 <motion.div
                   key="sidebar"
                   initial={{ x: "-100%" }}
@@ -134,7 +163,7 @@ const App = () => {
             >
               <ArrowRightFromLine
                 className="text-stone-100/60 cursor-pointer"
-                onClick={() => setShowSpotifyPage(true)}  // changes sidebar visibility to true --> in turn MOUNTS it via useeffect
+                onClick={() => setShowSpotifyPage(true)} // changes sidebar visibility to true --> in turn MOUNTS it via useeffect
               />
             </motion.div>
           </AnimatePresence>
@@ -142,15 +171,32 @@ const App = () => {
 
         <div className="flex-1 flex flex-col">
           <div className="w-full h-full border-b">
-
             <div className="w-full h-full flex items-end justify-center pb-5 text-white">
-              <Input className="w-[50%]" />
+              <div className="w-full flex items-center justify-center gap-1">
+                <Input
+                  onChange={(e) => setInput(e.target.value)}
+                  className="w-[60%] bg-stone-700/30"
+                />
+                <button onClick={sendInput}>
+                  <SendHorizontal className="cursor-pointer" />
+                </button>
+              </div>
             </div>
 
             <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
               <PopoverTrigger asChild>
-                <Button className="absolute right-0 top-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
-                  {signedIn ? "sign out" : "sign in"}
+                <Button className="absolute right-0 top-0 p-5 m-3 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
+                  {signedIn ? (
+                    <Avatar>
+                      <AvatarImage src={pfp} />
+                      <AvatarFallback>profile</AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <Avatar>
+                      <AvatarImage src="/noProfile.png" />
+                      <AvatarFallback>noprofile</AvatarFallback>
+                    </Avatar>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="bg-stone-900/50 text-stone-100 border-green1/70">
@@ -158,8 +204,8 @@ const App = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium leading-none flex items-center justify-center w-full">
                       {!signedIn
-                        ? "Connect Spotify to Veyebe"
-                        : "Disconnect Spotify to Veyebe"}
+                        ? "Connect Spotify to V.aibe"
+                        : "Disconnect Spotify to V.aibe"}
                     </h4>
                   </div>
 
@@ -199,8 +245,8 @@ const App = () => {
                       sessionStorage.getItem("redirectedAfterLogin") == "true"
                         ? "IN"
                         : signedIn
-                          ? "STATE"
-                          : "OUT"
+                        ? "STATE"
+                        : "OUT"
                     }
                     onClose={() => setShowAlert(false)}
                   />
@@ -216,7 +262,7 @@ const App = () => {
       </div>
 
       {/* <span className="p-2 m-2 text-2xl text-transparent bg-clip-text bg-linear-to-r from-green1 via-green2 to-green3 bg-size-200 animate-gradient-x">
-        veyebe.ai
+        v.aibe
       </span> */}
     </div>
   );

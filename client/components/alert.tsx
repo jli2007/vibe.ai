@@ -1,4 +1,3 @@
-// AlertFlash.tsx
 import { useEffect } from "react";
 import { motion } from "motion/react";
 

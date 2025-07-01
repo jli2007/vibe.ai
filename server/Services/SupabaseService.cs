@@ -23,8 +23,6 @@ namespace server.Services
 
             _client = new Client(url, key, options);
 
-            Console.WriteLine("Hello World!");
-
             try
             {
                 await _client.InitializeAsync();
