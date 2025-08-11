@@ -24,7 +24,7 @@ const App = () => {
 
   // info
   const [username, setUsername] = useState<string>("");
-  const [pfp, setPfp] = useState<string>("/noProfile.png");
+  const [pfp, setPfp] = useState<string>("/404profile.png");
   const [input, setInput] = useState<string>("");
 
   // pages
@@ -106,7 +106,7 @@ const App = () => {
   // sends input to openai
   const sendInput = async () => {
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`,
+      `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/openai/response`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,8 +114,8 @@ const App = () => {
       }
     );
 
-    const data = res.json();
-    console.log(data);
+    const data = await res.json();
+    console.log(data.content[0].text);
   };
 
   return (
@@ -193,8 +193,8 @@ const App = () => {
                     </Avatar>
                   ) : (
                     <Avatar>
-                      <AvatarImage src="/noProfile.png" />
-                      <AvatarFallback>noprofile</AvatarFallback>
+                      <AvatarImage src="/404profile.png" />
+                      <AvatarFallback>404profile</AvatarFallback>
                     </Avatar>
                   )}
                 </Button>
@@ -204,8 +204,8 @@ const App = () => {
                   <div className="space-y-2">
                     <h4 className="font-medium leading-none flex items-center justify-center w-full">
                       {!signedIn
-                        ? "Connect Spotify to V.aibe"
-                        : "Disconnect Spotify to V.aibe"}
+                        ? "Connect Spotify to Vibe.ai"
+                        : "Disconnect Spotify to Vibe.ai"}
                     </h4>
                   </div>
 
@@ -262,7 +262,7 @@ const App = () => {
       </div>
 
       {/* <span className="p-2 m-2 text-2xl text-transparent bg-clip-text bg-linear-to-r from-green1 via-green2 to-green3 bg-size-200 animate-gradient-x">
-        v.aibe
+        Vibe.ai
       </span> */}
     </div>
   );
