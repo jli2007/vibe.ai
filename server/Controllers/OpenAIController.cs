@@ -13,15 +13,16 @@ public class OpenAIController : ControllerBase
         _openAIService = openAIService;
     }
 
-    [HttpPost("response")]
-    public async Task<IActionResult> GetResponse([FromBody] TokenDTo body)
-    {
-        var res = await _openAIService.UseOpenAI(body.text);
-        return Ok(res);
-    }
-
     public class TokenDTo
     {
         public string text{ get; set; } = string.Empty;
+    }
+
+    [HttpPost("response")]
+    public async Task<IActionResult> GetResponse([FromBody] TokenDTo body)
+    {
+        Console.WriteLine($"Body text: {body.text}");
+        var res = await _openAIService.UseOpenAI(body.text);
+        return Ok(res);
     }
 }

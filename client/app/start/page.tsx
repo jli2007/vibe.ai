@@ -25,7 +25,7 @@ const App = () => {
   // info
   const [username, setUsername] = useState<string>("");
   const [pfp, setPfp] = useState<string>("/404profile.png");
-  const [input, setInput] = useState<string>("");
+  const [input, setInput] = useState<string>("a playlist for a scenic drive in the alps");
 
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
@@ -105,12 +105,13 @@ const App = () => {
 
   // sends input to openai
   const sendInput = async () => {
+    console.log("sending,", input)
     const res = await fetch(
       `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/openai/response`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({ text: input }),
       }
     );
 
@@ -142,7 +143,7 @@ const App = () => {
                     />
                     <h1 className="text-stone-100 p-2">
                       {username !== ""
-                        ? "welcome " + username
+                        ? "your spotify functions are here, " + username
                         : "sign in with spotify first"}
                     </h1>
                   </div>
@@ -176,6 +177,8 @@ const App = () => {
                 <Input
                   onChange={(e) => setInput(e.target.value)}
                   className="w-[60%] bg-stone-700/30"
+                  placeholder="playlist for a scenic drive in the alps"
+                  value={input}
                 />
                 <button onClick={sendInput}>
                   <SendHorizontal className="cursor-pointer" />

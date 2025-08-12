@@ -14,7 +14,12 @@ namespace server.Services
         }
 
         public async Task<PrivateUser> GetCurrentUserProfileAsync(string accessToken)
-        {
+        {  
+            if (string.IsNullOrWhiteSpace(accessToken)) throw new ArgumentException("accessToken is required");
+
+            if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                accessToken = accessToken.Substring(7).Trim();
+
             var spotify = await GetClientAsync(accessToken);
             return await spotify.UserProfile.Current();
         }
