@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import useChatbot from "@/hooks/useChatbot";
+import useChatScroll from "@/hooks/chatbotAutoscroll";
 import AlertFlash from "@/components/alert";
 import {
   Popover,
@@ -14,10 +16,13 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeftFromLine,
   ArrowRightFromLine,
+  MessageCircleQuestion,
   SendHorizontal,
 } from "lucide-react";
 
 const App = () => {
+  const { messages, sendMessage } = useChatbot();
+  const ref = useChatScroll(messages);
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
@@ -25,13 +30,13 @@ const App = () => {
   // info
   const [username, setUsername] = useState<string>("");
   const [pfp, setPfp] = useState<string>("/404profile.png");
-  const [input, setInput] = useState<string>("a playlist for a scenic drive in the alps");
+  const [input, setInput] = useState<string>(
+    "a playlist for a scenic drive in the alps"
+  );
 
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
-    useState(showSpotifyPage);
-
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
   // set user on load if state is saved // IS THIS NEEDED?
@@ -103,22 +108,6 @@ const App = () => {
     sessionStorage.setItem("redirectedAfterLogin", "true");
   }
 
-  // sends input to openai
-  const sendInput = async () => {
-    console.log("sending,", input)
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/openai/response`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: input }),
-      }
-    );
-
-    const data = await res.json();
-    console.log(data.content[0].text);
-  };
-
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
       <div className="flex justify-center flex-row w-full h-full">
@@ -160,7 +149,7 @@ const App = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
-              className="absolute left-1 top-1/2"
+              className="absolute left-1 top-1/2 z-50"
             >
               <ArrowRightFromLine
                 className="text-stone-100/60 cursor-pointer"
@@ -170,17 +159,69 @@ const App = () => {
           </AnimatePresence>
         )}
 
-        <div className="flex-1 flex flex-col">
-          <div className="w-full h-full border-b">
-            <div className="w-full h-full flex items-end justify-center pb-5 text-white">
-              <div className="w-full flex items-center justify-center gap-1">
+        <div className="relative w-full h-full border-b">
+          <div className="absolute inset-0 overflow-y-auto p-4 pt-16 pb-28" ref={ref}>
+            <div className="flex flex-col gap-3">
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`flex items-end gap-3 ${
+                    msg.sender === "user" ? "justify-end" : "justify-start"
+                  }`}
+                >
+                  <div
+                    className={`flex-shrink-0 ${
+                      msg.sender === "user" ? "" : ""
+                    }`}
+                  >
+                    {msg.sender === "user" ? (
+                      <Avatar className="w-8 h-8">
+                        {" "}
+                        <AvatarImage src={pfp} />
+                        <AvatarFallback>profile</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar className="w-8 h-8">
+                        {" "}
+                        <AvatarImage src="/vibe.png" />
+                        <AvatarFallback>bot</AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+
+                  <div
+                    className={`p-3 rounded-lg max-w-xs break-words ${
+                      msg.sender === "user"
+                        ? "bg-green-600 text-white"
+                        : "bg-gray-300 text-gray-800"
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="w-full h-full flex items-end justify-center pb-5 text-white">
+            <div className="flex-1 flex flex-col">
+              <div className="w-full flex items-center justify-center gap-1 z-50">
                 <Input
                   onChange={(e) => setInput(e.target.value)}
                   className="w-[60%] bg-stone-700/30"
                   placeholder="playlist for a scenic drive in the alps"
                   value={input}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      sendMessage(input);
+                    }
+                  }}
                 />
-                <button onClick={sendInput}>
+                <button
+                  onClick={() => {
+                    sendMessage(input);
+                  }}
+                >
                   <SendHorizontal className="cursor-pointer" />
                 </button>
               </div>
@@ -202,7 +243,7 @@ const App = () => {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="bg-stone-900/50 text-stone-100 border-green1/70">
+              <PopoverContent className="bg-stone-900/50 text-stone-100 border-1 border-green1/70">
                 <div className="grid gap-7">
                   <div className="space-y-2">
                     <h4 className="font-medium leading-none flex items-center justify-center w-full">
@@ -257,16 +298,12 @@ const App = () => {
               )}
             </AnimatePresence>
 
-            <Button className=" absolute right-0 bottom-0 p-1 m-3 px-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
-              need help?
+            <Button className="absolute right-0 bottom-0 p-1 m-3 px-5 text-md border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5 z-50">
+              help <MessageCircleQuestion/>
             </Button>
           </div>
         </div>
       </div>
-
-      {/* <span className="p-2 m-2 text-2xl text-transparent bg-clip-text bg-linear-to-r from-green1 via-green2 to-green3 bg-size-200 animate-gradient-x">
-        Vibe.ai
-      </span> */}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { PropsWithChildren, useState, useEffect } from "react";
-import { supabaseClient } from "@/integrations/supabase/supabaseClient";
+import { supabaseClient } from "@/hooks/supabaseClient";
 import { AuthUser } from "@supabase/supabase-js";
 import { AuthContext } from "./AuthContext";
 

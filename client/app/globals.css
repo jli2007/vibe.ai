@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900');
+@import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900");
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -18,7 +18,7 @@
   --clr-3: #95ffe1;
   --clr-4: #88ff61;
   --blur: 1rem;
-    /* tailwind does not support clamp */
+  /* tailwind does not support clamp */
   --fs: clamp(3rem, 8vw, 7rem);
   --ls: clamp(-1.75px, -0.25vw, -3.5px);
 
@@ -158,6 +158,33 @@
   box-sizing: border-box;
 }
 
+/* scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 100, 100, 0.4) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 100, 100, 0.4);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(100, 100, 100, 0.6);
+}
+
 *,
 *::before,
 *::after {
@@ -166,7 +193,7 @@
 }
 
 /* default button cursor */
-button{
+button {
   cursor: pointer;
 }
 

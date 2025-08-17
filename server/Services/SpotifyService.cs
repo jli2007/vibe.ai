@@ -31,9 +31,9 @@ namespace server.Services
             // create playlist (requires proper scopes)
             var createRequest = new PlaylistCreateRequest(spec.Name ?? "New Playlist")
             {
-                Public = false // CHANGED: example — set public/private as you need
+                Public = false // example — set public/private as you need
             };
-            var created = await spotify.Playlists.Create(userId, createRequest); // CHANGED
+            var created = await spotify.Playlists.Create(userId, createRequest);
             if (created == null) return null;
 
             var playlistId = created.Id;
@@ -46,8 +46,8 @@ namespace server.Services
             // add tracks if any were found
             if (uris != null && uris.Count > 0)
             {
-                var addRequest = new PlaylistAddItemsRequest(uris); // CHANGED
-                await spotify.Playlists.AddItems(playlistId, addRequest); // CHANGED: check response in prod
+                var addRequest = new PlaylistAddItemsRequest(uris);
+                await spotify.Playlists.AddItems(playlistId, addRequest); // check response in prod
             }
 
             return created.Uri ?? created.Id;
@@ -84,9 +84,9 @@ namespace server.Services
                 {
                     if (string.IsNullOrWhiteSpace(a)) continue;
 
-                    // CHANGED: search tracks by artist (best-effort). Note: advanced filters like "artist:" can be flaky in some cases.
-                    var artistTrackSearch = await spotify.Search.Item( // CHANGED
-                        new SearchRequest(SearchRequest.Types.Track, $"artist:{a}") { Limit = 1 } // CHANGED
+                    // search tracks by artist (best-effort). Note: advanced filters like "artist:" can be flaky in some cases.
+                    var artistTrackSearch = await spotify.Search.Item(
+                        new SearchRequest(SearchRequest.Types.Track, $"artist:{a}") { Limit = 1 }
                     );
 
                     if (artistTrackSearch?.Tracks?.Items != null && artistTrackSearch.Tracks.Items.Count > 0)
