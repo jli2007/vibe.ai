@@ -20,7 +20,7 @@ export default function AlertFlash({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 1 }}
-      className={`fixed left-1/2 bottom-5 -translate-x-1/2 text-white px-4 py-2 rounded shadow ${
+      className={`fixed left-1/2 bottom-5 -translate-x-1/2 text-white px-4 py-2 rounded shadow z-60 ${
         message === "IN"
           ? "bg-emerald-500"
           : message === "STATE"

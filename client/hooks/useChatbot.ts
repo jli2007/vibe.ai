@@ -1,12 +1,12 @@
 import { useState } from "react";
 
-interface Message {
+export interface Message {
   text: string;
   sender: "user" | "bot";
 }
 
 const useChatbot = () => {
-  const [messages, setMessages] = useState<Message[]>([{ text: "How can I help you today?", sender: "bot" } ]);
+  const [messages, setMessages] = useState<Message[]>([{ text: "How can I help you today?", sender: "bot" }]);
 
   const sendMessage = async (message: string) => {
     const newMessages: Message[] = [
@@ -36,7 +36,7 @@ const useChatbot = () => {
       console.error("error in chatbot request: ", error);
     }
   };
-  return { messages, sendMessage };
+  return { messages, sendMessage, setMessages };
 };
 
 export default useChatbot;

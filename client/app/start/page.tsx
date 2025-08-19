@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import useChatbot from "@/hooks/useChatbot";
+import useChatbot, { Message } from "@/hooks/useChatbot";
 import useChatScroll from "@/hooks/chatbotAutoscroll";
 import AlertFlash from "@/components/alert";
 import {
@@ -18,10 +18,18 @@ import {
   ArrowRightFromLine,
   MessageCircleQuestion,
   SendHorizontal,
+  Copy,
+  Check,
+  RotateCcw,
 } from "lucide-react";
 
+const Starting_Message: Message = {
+  text: "How can I help you today?",
+  sender: "bot",
+};
+
 const App = () => {
-  const { messages, sendMessage } = useChatbot();
+  const { messages, sendMessage, setMessages } = useChatbot();
   const ref = useChatScroll(messages);
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
@@ -33,11 +41,59 @@ const App = () => {
   const [input, setInput] = useState<string>(
     "a playlist for a scenic drive in the alps"
   );
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
+    useState(showSpotifyPage);
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
+
+  useEffect(() => {
+    const loadMessages = () => {
+      try {
+        const savedMessages = localStorage.getItem("chatMessages");
+
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages);
+
+          // Check if we have valid messages array with content
+          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+            setMessages(parsedMessages);
+            return;
+          }
+        }
+
+        // If no valid saved messages, set default
+        const defaultMessages = [Starting_Message];
+        setMessages(defaultMessages);
+        localStorage.setItem("chatMessages", JSON.stringify(defaultMessages));
+      } catch (error) {
+        console.error("Error loading saved messages:", error);
+        // If parsing fails, set default
+        const defaultMessages = [Starting_Message];
+        setMessages(defaultMessages);
+        localStorage.setItem("chatMessages", JSON.stringify(defaultMessages));
+      }
+    };
+
+    loadMessages();
+  }, [setMessages]); // Remove setMessages dependency to prevent re-running
+
+  // Save messages to localStorage whenever messages change
+  useEffect(() => {
+    // Only save if we have messages and they're not just the initial empty array
+    if (messages.length > 0) {
+      localStorage.setItem("chatMessages", JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Updated clearMessages function
+  const clearMessages = () => {
+    const defaultMessages = [Starting_Message];
+    setMessages(defaultMessages);
+    // localStorage will be updated automatically by the useEffect above
+  };
 
   // set user on load if state is saved // IS THIS NEEDED?
   useEffect(() => {
@@ -108,6 +164,41 @@ const App = () => {
     sessionStorage.setItem("redirectedAfterLogin", "true");
   }
 
+  const parseBoldText = (text: string) => {
+    // split text by **bold** patterns and map to JSX
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+
+    return parts.map((part, index) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        // remove the ** and make it bold
+        const boldText = part.slice(2, -2);
+        return (
+          <strong key={index} className="font-bold">
+            {boldText}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
+  const copyToClipboard = async (text: string, index: any) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error("Failed to copy text: ", err);
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (input.trim()) {
+      sendMessage(input);
+      setInput("");
+    }
+  };
+
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
       <div className="flex justify-center flex-row w-full h-full">
@@ -160,7 +251,18 @@ const App = () => {
         )}
 
         <div className="relative w-full h-full border-b">
-          <div className="absolute inset-0 overflow-y-auto p-4 pt-16 pb-28" ref={ref}>
+          <Button
+            onClick={clearMessages}
+            className="absolute left-4 top-4 z-50 p-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400"
+            title="Reload chat (Ctrl+Shift+D / Cmd+Shift+D)"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+
+          <div
+            className="absolute inset-0 overflow-y-auto p-4 pt-16 pb-28"
+            ref={ref}
+          >
             <div className="flex flex-col gap-3">
               {messages.map((msg, index) => (
                 <div
@@ -189,14 +291,30 @@ const App = () => {
                     )}
                   </div>
 
-                  <div
-                    className={`p-3 rounded-lg max-w-xs break-words ${
-                      msg.sender === "user"
-                        ? "bg-green-600 text-white"
-                        : "bg-gray-300 text-gray-800"
-                    }`}
-                  >
-                    {msg.text}
+                  <div className="flex items-end gap-2 group">
+                    <div
+                      className={`p-3 rounded-lg max-w-xl break-words whitespace-pre-wrap ${
+                        msg.sender === "user"
+                          ? "bg-green-600 text-white"
+                          : "bg-gray-300 text-gray-800"
+                      }`}
+                    >
+                      {parseBoldText(msg.text)}
+                    </div>
+
+                    <button
+                      onClick={() => copyToClipboard(msg.text, index)}
+                      className={`opacity-0 group-hover:opacity-100 transition-opacity delay-200 duration-500 p-2 rounded-md hover:bg-gray-200 ${
+                        msg.sender === "user" ? "order-0" : ""
+                      }`}
+                      title="Copy message"
+                    >
+                      {copiedIndex === index ? (
+                        <Check className="w-4 h-4 text-green-600" />
+                      ) : (
+                        <Copy className="w-4 h-4 text-gray-500" />
+                      )}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -207,19 +325,19 @@ const App = () => {
               <div className="w-full flex items-center justify-center gap-1 z-50">
                 <Input
                   onChange={(e) => setInput(e.target.value)}
-                  className="w-[60%] bg-stone-700/30"
+                  className="w-[60%] bg-stone-700/75"
                   placeholder="playlist for a scenic drive in the alps"
                   value={input}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      sendMessage(input);
+                      handleSendMessage();
                     }
                   }}
                 />
                 <button
                   onClick={() => {
-                    sendMessage(input);
+                    handleSendMessage();
                   }}
                 >
                   <SendHorizontal className="cursor-pointer" />
@@ -299,7 +417,7 @@ const App = () => {
             </AnimatePresence>
 
             <Button className="absolute right-0 bottom-0 p-1 m-3 px-5 text-md border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5 z-50">
-              help <MessageCircleQuestion/>
+              help <MessageCircleQuestion />
             </Button>
           </div>
         </div>

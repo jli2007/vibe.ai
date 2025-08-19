@@ -8,11 +8,18 @@ using server.Services;
 public class SupabaseController : ControllerBase
 #pragma warning restore CA1050 // Declare types in namespaces
 {
-    // http not required, placeholder
+    private readonly ISupabaseService _SupabaseService; 
+
+    public SupabaseController(ISupabaseService SupabaseService)
+    {
+        _SupabaseService = SupabaseService;
+    }
+
+    // http not required for connection: placeholder for future fns. 
     [HttpGet("connect")]
     public async Task<IActionResult> ConnectClient()
     {
-        var client = await SupabaseClientService.GetClientAsync();
+        var client = await _SupabaseService.GetClientAsync();
         return Ok(client);
     }
 }

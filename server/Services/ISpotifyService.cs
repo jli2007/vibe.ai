@@ -5,6 +5,7 @@ namespace server.Services
     public interface ISpotifyService
     {
         Task<PrivateUser> GetCurrentUserProfileAsync(string accessToken);
+        
         // Create a playlist from a PlaylistSpec (resolves seeds -> Spotify recs -> creates playlist)
         Task<string?> CreatePlaylistFromSpecAsync(string accessToken, string userId, PlaylistSpec spec);
 
