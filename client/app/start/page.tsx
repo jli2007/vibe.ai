@@ -21,12 +21,8 @@ import {
   Copy,
   Check,
   RotateCcw,
+  Sparkles,
 } from "lucide-react";
-
-const Starting_Message: MessageDTO = {
-  text: "How can I help you today?",
-  sender: "bot",
-};
 
 const App = () => {
   const { messages, sendMessage, setMessages } = useChatbot();
@@ -34,15 +30,12 @@ const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
-  const [previousMessages, setPreviousMessages] = useState<MessageDTO[]>([]);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showWelcomeInfo, setShowWelcomeInfo] = useState(true);
 
   // info
   const [username, setUsername] = useState<string>("");
   const [pfp, setPfp] = useState<string>("/404profile.png");
-  const [input, setInput] = useState<string>(
-    "a playlist for a scenic drive in the alps"
-  );
+  const [input, setInput] = useState<string>("a playlist for a scenic drive in the alps");
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   // pages
@@ -53,8 +46,7 @@ const App = () => {
   useEffect(() => {
     const loadMessages = async () => {
       if (!user?.id) {
-        setMessages([Starting_Message]);
-        setIsInitialLoad(false);
+        setMessages([]);
         return;
       }
 
@@ -79,103 +71,35 @@ const App = () => {
         const data: MessagesResponse = await response.json();
 
         if (data.success && data.messages && Array.isArray(data.messages)) {
-          if (data.messages.length > 0) {
-            const formattedMessages: MessageDTO[] = data.messages.map(
-              (msg) => ({
-                text: msg.text,
-                sender: msg.sender,
-              })
-            );
-            setMessages(formattedMessages);
-          } else {
-            // If no messages from API, set default
-            setMessages([Starting_Message]);
+          const formattedMessages: MessageDTO[] = data.messages.map(
+            (msg) => ({
+              text: msg.text,
+              sender: msg.sender,
+            })
+          );
+          setMessages(formattedMessages);
+          
+          // Hide welcome info if there are existing messages
+          if (formattedMessages.length > 0) {
+            setShowWelcomeInfo(false);
           }
         } else {
           console.error("Error loading messages:", data.error);
+          setMessages([]);
         }
       } catch (error) {
         console.error("Error loading messages from API:", error);
+        setMessages([]);
       }
-
-      setIsInitialLoad(false);
     };
 
     loadMessages();
   }, [user?.id, setMessages, supabase.auth]);
 
-  useEffect(() => {
-    // Don't save during initial load or if no user is signed in
-    if (isInitialLoad || !user?.id || messages.length === 0) {
-      setPreviousMessages(messages);
-      return;
-    }
-
-    // Find new messages that weren't in the previous state
-    const newMessages = messages.filter(
-      (msg, index) =>
-        index >= previousMessages.length ||
-        msg.text !== previousMessages[index]?.text ||
-        msg.sender !== previousMessages[index]?.sender
-    );
-
-    // Save each new message
-    const saveNewMessages = async () => {
-      for (const message of newMessages) {
-        // Skip saving the default starting message
-        if (
-          message.text === Starting_Message.text &&
-          message.sender === Starting_Message.sender
-        ) {
-          continue;
-        }
-
-        try {
-          const session = await supabase.auth.getSession();
-          const accessToken = session.data.session?.access_token;
-
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/supabase/save-message`,
-            {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                Text: message.text,
-                Sender: message.sender,
-                UserId: user.id,
-              }),
-            }
-          );
-
-          if (!response.ok) {
-            console.error(`Failed to save message: ${response.status}`);
-            continue;
-          }
-
-          const result = await response.json();
-          if (!result.success) {
-            console.error("Error saving message:", result.error);
-          }
-        } catch (error) {
-          console.error("Error calling save-message API:", error);
-        }
-      }
-    };
-
-    if (newMessages.length > 0) {
-      saveNewMessages();
-    }
-
-    // Update previous messages state
-    setPreviousMessages(messages);
-  }, [messages, user?.id, isInitialLoad, previousMessages, supabase.auth]);
-
   const clearMessages = async () => {
     if (!user?.id) {
-      setMessages([Starting_Message]);
+      setMessages([]);
+      setShowWelcomeInfo(true);
       return;
     }
 
@@ -200,8 +124,9 @@ const App = () => {
 
       const data: MessagesResponse = await response.json();
 
-      if (data.success && data.messages) {
-        setMessages([Starting_Message]);
+      if (data.success) {
+        setMessages([]);
+        setShowWelcomeInfo(true);
       } else {
         console.error("Error clearing messages:", data.error);
       }
@@ -309,6 +234,10 @@ const App = () => {
 
   const handleSendMessage = () => {
     if (input.trim()) {
+      // Hide welcome info when first message is sent
+      if (showWelcomeInfo) {
+        setShowWelcomeInfo(false);
+      }
       sendMessage(input);
       setInput("");
     }
@@ -366,18 +295,100 @@ const App = () => {
         )}
 
         <div className="relative w-full h-full border-b">
-          <Button
-            onClick={clearMessages}
-            className="absolute left-4 top-4 z-50 p-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400"
-            title="Reload chat (Ctrl+Shift+D / Cmd+Shift+D)"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </Button>
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/15 to-gray-600/10 backdrop-blur-2xl rounded-lg drop-shadow-2xl border border-white/10 
+                          before:absolute before:inset-0 before:bg-gradient-to-t before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none">
+            <div className="flex justify-between items-center mx-2 p-1">
+              <Button
+                onClick={clearMessages}
+                className=" p-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400"
+                title="Reload chat (Ctrl+Shift+D / Cmd+Shift+D)"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button className="p-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
+                    {signedIn ? (
+                      <Avatar>
+                        <AvatarImage src={pfp} />
+                        <AvatarFallback>profile</AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Avatar>
+                        <AvatarImage src="/404profile.png" />
+                        <AvatarFallback>404profile</AvatarFallback>
+                      </Avatar>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="bg-stone-900/50 text-stone-100 border-1 border-green1/70">
+                  <div className="grid gap-7">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none flex items-center justify-center w-full">
+                        {!signedIn
+                          ? "Connect Spotify to Vibe.ai"
+                          : "Disconnect Spotify to Vibe.ai"}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center justify-center w-full my-5">
+                      <Button
+                        onClick={() => {
+                          if (!signedIn) {
+                            signInWithSpotify();
+                          } else {
+                            signOut();
+                            setSignedIn(false);
+                            setPopoverOpen(false);
+                            setShowAlert(true);
+                          }
+                        }}
+                        className="p-3 rounded-lg bg-stone-700/50"
+                      >
+                        {!signedIn ? "configure" : "unconfigure"}
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
 
           <div
             className="absolute inset-0 overflow-y-auto p-4 pt-16 pb-28"
             ref={ref}
           >
+            {/* Welcome Info Component */}
+            <AnimatePresence>
+              {showWelcomeInfo && messages.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center justify-center min-h-[50vh]"
+                >
+                  <div className="bg-gradient-to-br from-stone-700/40 to-stone-800/40 backdrop-blur-sm border border-stone-600/30 rounded-xl p-8 max-w-md text-center">
+                    <div className="flex justify-center mb-4">
+                      <Sparkles className="w-12 h-12 text-green-400 animate-pulse" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-stone-100 mb-3">
+                      Welcome to Vibe.ai
+                    </h3>
+                    <p className="text-stone-300 mb-4 leading-relaxed">
+                      I&apos;m here to help you create the perfect playlists for any mood or occasion. 
+                      Connect your Spotify account and let&apos;s get started!
+                    </p>
+                    <p className="text-stone-400 text-sm">
+                      Start typing a message below to begin our conversation
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Messages */}
             <div className="flex flex-col gap-3">
               {messages.map((msg, index) => (
                 <div
@@ -393,13 +404,11 @@ const App = () => {
                   >
                     {msg.sender === "user" ? (
                       <Avatar className="w-8 h-8">
-                        {" "}
                         <AvatarImage src={pfp} />
                         <AvatarFallback>profile</AvatarFallback>
                       </Avatar>
                     ) : (
                       <Avatar className="w-8 h-8">
-                        {" "}
                         <AvatarImage src="/vibe.png" />
                         <AvatarFallback>bot</AvatarFallback>
                       </Avatar>
@@ -459,53 +468,6 @@ const App = () => {
                 </button>
               </div>
             </div>
-
-            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button className="absolute right-0 top-0 p-5 m-3 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
-                  {signedIn ? (
-                    <Avatar>
-                      <AvatarImage src={pfp} />
-                      <AvatarFallback>profile</AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <Avatar>
-                      <AvatarImage src="/404profile.png" />
-                      <AvatarFallback>404profile</AvatarFallback>
-                    </Avatar>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="bg-stone-900/50 text-stone-100 border-1 border-green1/70">
-                <div className="grid gap-7">
-                  <div className="space-y-2">
-                    <h4 className="font-medium leading-none flex items-center justify-center w-full">
-                      {!signedIn
-                        ? "Connect Spotify to Vibe.ai"
-                        : "Disconnect Spotify to Vibe.ai"}
-                    </h4>
-                  </div>
-
-                  <div className="flex items-center justify-center w-full my-5">
-                    <Button
-                      onClick={() => {
-                        if (!signedIn) {
-                          signInWithSpotify();
-                        } else {
-                          signOut();
-                          setSignedIn(false);
-                          setPopoverOpen(false);
-                          setShowAlert(true);
-                        }
-                      }}
-                      className="p-3 rounded-lg bg-stone-700/50"
-                    >
-                      {!signedIn ? "configure" : "unconfigure"}
-                    </Button>
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
 
             <AnimatePresence
               initial={false}

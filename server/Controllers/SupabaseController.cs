@@ -30,12 +30,13 @@ public class SupabaseController : ControllerBase
     [HttpGet("get-messages/{userId}")]
     public async Task<ActionResult<MessagesResponse>> GetMessages(string userId)
     {
+        Console.WriteLine("Getting Messages for, " + userId);
         if (string.IsNullOrEmpty(userId))
         {
-            return BadRequest(new MessagesResponse 
-            { 
-                Success = false, 
-                Error = "User ID is required" 
+            return BadRequest(new MessagesResponse
+            {
+                Success = false,
+                Error = "User ID is required"
             });
         }
 
@@ -57,6 +58,7 @@ public class SupabaseController : ControllerBase
     [HttpPost("save-message")]
     public async Task<ActionResult<MessagesResponse>> SaveMessage([FromBody] CreateMessageRequest request)
     {
+        Console.WriteLine("Saving Messages for, "+ request.UserId);
         try
         {
             var jwt = GetJwtFromRequest();
@@ -66,7 +68,7 @@ public class SupabaseController : ControllerBase
             }
 
             var success = await _supabaseService.SaveMessage(request, jwt);
-            
+
             if (success.Success)
             {
                 return Ok(new { success = true, message = "Message saved successfully" });
@@ -87,6 +89,7 @@ public class SupabaseController : ControllerBase
     [HttpDelete("clear-messages/{userId}")]
     public async Task<ActionResult<MessagesResponse>> ClearMessages(string userId)
     {
+        Console.WriteLine("Clearing Messages for, "+ userId);
         try
         {
             var jwt = GetJwtFromRequest();
@@ -96,14 +99,14 @@ public class SupabaseController : ControllerBase
             }
 
             var response = await _supabaseService.ClearUserMessages(userId, jwt);
-            
+
             if (response.Success)
             {
                 // Return the default starting message after clearing
-                return Ok(new 
-                { 
-                    success = true, 
-                    messages = new[] 
+                return Ok(new
+                {
+                    success = true,
+                    messages = new[]
                     {
                         new { text = "How can I help you today?", sender = "bot" }
                     }
