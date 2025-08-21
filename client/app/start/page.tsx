@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import useChatbot, { Message } from "@/hooks/useChatbot";
+import useChatbot, { MessageDTO, MessagesResponse } from "@/hooks/useChatbot";
 import useChatScroll from "@/hooks/chatbotAutoscroll";
 import AlertFlash from "@/components/alert";
 import {
@@ -23,7 +23,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-const Starting_Message: Message = {
+const Starting_Message: MessageDTO = {
   text: "How can I help you today?",
   sender: "bot",
 };
@@ -34,6 +34,8 @@ const App = () => {
   const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
+  const [previousMessages, setPreviousMessages] = useState<MessageDTO[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // info
   const [username, setUsername] = useState<string>("");
@@ -45,57 +47,170 @@ const App = () => {
 
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
-    useState(showSpotifyPage);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
   useEffect(() => {
-    const loadMessages = () => {
+    const loadMessages = async () => {
+      if (!user?.id) {
+        setMessages([Starting_Message]);
+        setIsInitialLoad(false);
+        return;
+      }
+
       try {
-        const savedMessages = localStorage.getItem("chatMessages");
-
-        if (savedMessages) {
-          const parsedMessages = JSON.parse(savedMessages);
-
-          // Check if we have valid messages array with content
-          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
-            setMessages(parsedMessages);
-            return;
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/supabase/get-messages/${user.id}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
           }
+        );
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        // If no valid saved messages, set default
-        const defaultMessages = [Starting_Message];
-        setMessages(defaultMessages);
-        localStorage.setItem("chatMessages", JSON.stringify(defaultMessages));
+        const data: MessagesResponse = await response.json();
+
+        if (data.success && data.messages && Array.isArray(data.messages)) {
+          if (data.messages.length > 0) {
+            const formattedMessages: MessageDTO[] = data.messages.map(
+              (msg) => ({
+                text: msg.text,
+                sender: msg.sender,
+              })
+            );
+            setMessages(formattedMessages);
+          } else {
+            // If no messages from API, set default
+            setMessages([Starting_Message]);
+          }
+        } else {
+          console.error("Error loading messages:", data.error);
+        }
       } catch (error) {
-        console.error("Error loading saved messages:", error);
-        // If parsing fails, set default
-        const defaultMessages = [Starting_Message];
-        setMessages(defaultMessages);
-        localStorage.setItem("chatMessages", JSON.stringify(defaultMessages));
+        console.error("Error loading messages from API:", error);
       }
+
+      setIsInitialLoad(false);
     };
 
     loadMessages();
-  }, [setMessages]); // Remove setMessages dependency to prevent re-running
+  }, [user?.id, setMessages, supabase.auth]);
 
-  // Save messages to localStorage whenever messages change
   useEffect(() => {
-    // Only save if we have messages and they're not just the initial empty array
-    if (messages.length > 0) {
-      localStorage.setItem("chatMessages", JSON.stringify(messages));
+    // Don't save during initial load or if no user is signed in
+    if (isInitialLoad || !user?.id || messages.length === 0) {
+      setPreviousMessages(messages);
+      return;
     }
-  }, [messages]);
 
-  // Updated clearMessages function
-  const clearMessages = () => {
-    const defaultMessages = [Starting_Message];
-    setMessages(defaultMessages);
-    // localStorage will be updated automatically by the useEffect above
+    // Find new messages that weren't in the previous state
+    const newMessages = messages.filter(
+      (msg, index) =>
+        index >= previousMessages.length ||
+        msg.text !== previousMessages[index]?.text ||
+        msg.sender !== previousMessages[index]?.sender
+    );
+
+    // Save each new message
+    const saveNewMessages = async () => {
+      for (const message of newMessages) {
+        // Skip saving the default starting message
+        if (
+          message.text === Starting_Message.text &&
+          message.sender === Starting_Message.sender
+        ) {
+          continue;
+        }
+
+        try {
+          const session = await supabase.auth.getSession();
+          const accessToken = session.data.session?.access_token;
+
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/supabase/save-message`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                Text: message.text,
+                Sender: message.sender,
+                UserId: user.id,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            console.error(`Failed to save message: ${response.status}`);
+            continue;
+          }
+
+          const result = await response.json();
+          if (!result.success) {
+            console.error("Error saving message:", result.error);
+          }
+        } catch (error) {
+          console.error("Error calling save-message API:", error);
+        }
+      }
+    };
+
+    if (newMessages.length > 0) {
+      saveNewMessages();
+    }
+
+    // Update previous messages state
+    setPreviousMessages(messages);
+  }, [messages, user?.id, isInitialLoad, previousMessages, supabase.auth]);
+
+  const clearMessages = async () => {
+    if (!user?.id) {
+      setMessages([Starting_Message]);
+      return;
+    }
+
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/supabase/clear-messages/${user.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: MessagesResponse = await response.json();
+
+      if (data.success && data.messages) {
+        setMessages([Starting_Message]);
+      } else {
+        console.error("Error clearing messages:", data.error);
+      }
+    } catch (error) {
+      console.error("Error clearing messages from API:", error);
+    }
   };
 
-  // set user on load if state is saved // IS THIS NEEDED?
+  // set user on load if state is saved // !!!!! THIS GOTTA BE FIXED
   useEffect(() => {
     if (user) {
       setSignedIn(true);

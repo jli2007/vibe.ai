@@ -5,14 +5,12 @@ namespace server.Services
 {
     public interface ISupabaseService
     {
-        Task<Client> GetClientAsync();
+        Task<Client> GetClientAsync(string? jwt = null);
 
-        Task<MessagesResponse> GetUserMessages(string userId);
+        Task<MessagesResponse> GetUserMessages(string userId, string? jwt = null);
 
-        Task<MessagesResponse> SaveMessage(CreateMessageRequest request);
+        Task<MessagesResponse> SaveMessage(CreateMessageRequest request, string jwt);
 
-        Task<MessagesResponse> ClearUserMessages(string userId);
-
-        Task<MessagesResponse> InitializeUserMessages(string userId);
+        Task<MessagesResponse> ClearUserMessages(string userId, string jwt);
     }
 }

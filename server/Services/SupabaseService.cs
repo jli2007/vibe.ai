@@ -7,25 +7,37 @@ namespace server.Services
     public class SupabaseService : ISupabaseService
     {
         private Client? _supabaseClient;
+        private readonly string _url;
+        private readonly string _key;
+
+        public SupabaseService(string? url = null, string? key = null)
+        {
+            _url = url ?? $"https://{Environment.GetEnvironmentVariable("SUPABASE_CLIENT")}.supabase.co";
+            _key = key ?? Environment.GetEnvironmentVariable("SUPABASE_ANON") ?? throw new ArgumentNullException("SUPABASE_ANON missing");
+        }
 
         // initialize supabaseclient for server side usage
-        public async Task<Client> GetClientAsync()
+        public async Task<Client> GetClientAsync(string? jwt = null)
         {
-            if (_supabaseClient != null) return _supabaseClient;
+            // Always create a new client when JWT is provided to ensure proper auth
+            if (jwt != null)
+            {
+                return await CreateClientWithJwtAsync(jwt);
+            }
 
-            var url = $"https://{Environment.GetEnvironmentVariable("SUPABASE_supabaseClient")}.supabase.co";
-            var key = Environment.GetEnvironmentVariable("SUPABASE_PASS");
+            // Use cached client for server-side operations without JWT
+            if (_supabaseClient != null) return _supabaseClient;
 
             var options = new Supabase.SupabaseOptions
             {
-                AutoConnectRealtime = true
+                AutoConnectRealtime = false
             };
 
-            _supabaseClient = new Client(url, key, options);
+            var client = new Client(_url, _key, options);
 
             try
             {
-                await _supabaseClient.InitializeAsync();
+                await client.InitializeAsync();
             }
             catch (Exception ex)
             {
@@ -33,14 +45,43 @@ namespace server.Services
                 throw;
             }
 
-            return _supabaseClient;
+            // Cache the server-key client
+            _supabaseClient = client;
+            return client;
         }
 
-        public async Task<MessagesResponse> GetUserMessages(string userId)
+        // Create a new client with JWT authentication
+        private async Task<Client> CreateClientWithJwtAsync(string jwt)
+        {
+            var options = new Supabase.SupabaseOptions
+            {
+                AutoConnectRealtime = false,
+                // Set the JWT token in the headers for API requests
+                Headers = new Dictionary<string, string>
+                {
+                    { "Authorization", $"Bearer {jwt}" }
+                }
+            };
+
+            var client = new Client(_url, _key, options);
+
+            try
+            {
+                await client.InitializeAsync();
+                return client;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to initialize Supabase client with JWT: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task<MessagesResponse> GetUserMessages(string userId, string? jwt = null)
         {
             try
             {
-                var client = await GetClientAsync();
+                var client = await GetClientAsync(jwt);
 
                 var result = await client
                     .From<Message>()
@@ -71,11 +112,11 @@ namespace server.Services
             }
         }
 
-        public async Task<MessagesResponse> SaveMessage(CreateMessageRequest request)
+        public async Task<MessagesResponse> SaveMessage(CreateMessageRequest request, string jwt)
         {
             try
             {
-                var client = await GetClientAsync();
+                var client = await GetClientAsync(jwt);
 
                 var message = new Message
                 {
@@ -113,11 +154,11 @@ namespace server.Services
             }
         }
 
-        public async Task<MessagesResponse> ClearUserMessages(string userId)
+        public async Task<MessagesResponse> ClearUserMessages(string userId, string jwt)
         {
             try
             {
-                var client = await GetClientAsync();
+                var client = await GetClientAsync(jwt);
 
                 await client
                     .From<Message>()
@@ -132,44 +173,11 @@ namespace server.Services
                     Sender = "bot"
                 };
 
-                return await SaveMessage(startingMessage);
+                return await SaveMessage(startingMessage, jwt);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error clearing user messages: {ex.Message}");
-                return new MessagesResponse
-                {
-                    Success = false,
-                    Error = ex.Message
-                };
-            }
-        }
-
-        public async Task<MessagesResponse> InitializeUserMessages(string userId)
-        {
-            try
-            {
-                // Check if user has any messages
-                var existingMessages = await GetUserMessages(userId);
-
-                if (existingMessages.Success && existingMessages.Messages.Count > 0)
-                {
-                    return existingMessages;
-                }
-
-                // If no messages, create the starting message
-                var startingMessage = new CreateMessageRequest
-                {
-                    UserId = userId,
-                    Text = "How can I help you today?",
-                    Sender = "bot"
-                };
-
-                return await SaveMessage(startingMessage);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error initializing user messages: {ex.Message}");
                 return new MessagesResponse
                 {
                     Success = false,

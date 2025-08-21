@@ -18,6 +18,7 @@ public class OpenAIController : ControllerBase
         public string text{ get; set; } = string.Empty;
     }
 
+    // POST: get openai response from prompt
     [HttpPost("response")]
     public async Task<IActionResult> GetResponse([FromBody] TokenDTo body)
     {

@@ -1,15 +1,21 @@
 import { useState } from "react";
 
-export interface Message {
+export interface MessageDTO {
   text: string;
   sender: "user" | "bot";
 }
 
+export interface MessagesResponse {
+  messages: MessageDTO[];
+  success: boolean;
+  error?: string;
+}
+
 const useChatbot = () => {
-  const [messages, setMessages] = useState<Message[]>([{ text: "How can I help you today?", sender: "bot" }]);
+  const [messages, setMessages] = useState<MessageDTO[]>([{ text: "How can I help you today?", sender: "bot" }]);
 
   const sendMessage = async (message: string) => {
-    const newMessages: Message[] = [
+    const newMessages: MessageDTO[] = [
       ...messages,
       { text: message, sender: "user" },
     ];

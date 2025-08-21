@@ -11,7 +11,8 @@ public class SpotifyController : ControllerBase
     {
         public string AccessToken { get; set; } = string.Empty;
     }
-
+    
+    // POST: get user spotify profile
     [HttpPost("profile")]
     public async Task<IActionResult> GetProfile([FromBody] TokenDTo body) // request (JSON) --> TokenDTO object with [FromBody]
     {
