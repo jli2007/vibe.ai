@@ -22,6 +22,7 @@ import {
   Check,
   RotateCcw,
   Sparkles,
+  LogIn,
 } from "lucide-react";
 
 const App = () => {
@@ -45,7 +46,7 @@ const App = () => {
 
   useEffect(() => {
     const loadMessages = async () => {
-      if (!user?.id) {
+      if (!user) {
         setMessages([]);
         return;
       }
@@ -71,14 +72,12 @@ const App = () => {
         const data: MessagesResponse = await response.json();
 
         if (data.success && data.messages && Array.isArray(data.messages)) {
-          const formattedMessages: MessageDTO[] = data.messages.map(
-            (msg) => ({
-              text: msg.text,
-              sender: msg.sender,
-            })
-          );
+          const formattedMessages: MessageDTO[] = data.messages.map((msg) => ({
+            text: msg.text,
+            sender: msg.sender,
+          }));
           setMessages(formattedMessages);
-          
+
           // Hide welcome info if there are existing messages
           if (formattedMessages.length > 0) {
             setShowWelcomeInfo(false);
@@ -94,7 +93,7 @@ const App = () => {
     };
 
     loadMessages();
-  }, [user?.id, setMessages, supabase.auth]);
+  }, [user, setMessages, supabase.auth]);
 
   const clearMessages = async () => {
     if (!user?.id) {
@@ -135,7 +134,7 @@ const App = () => {
     }
   };
 
-  // set user on load if state is saved // !!!!! THIS GOTTA BE FIXED
+  // set user on load if state is saved //  THIS GOTTA BE FIXED????
   useEffect(() => {
     if (user) {
       setSignedIn(true);
@@ -163,6 +162,10 @@ const App = () => {
     }
 
     const fetchSession = async () => {
+      if (!signedIn || !user) {
+        return;
+      }
+
       const session = await supabase.auth.getSession();
 
       console.log("SESSION", session);
@@ -187,7 +190,7 @@ const App = () => {
     };
 
     fetchSession();
-  }, [signedIn, supabase]);
+  }, [signedIn, supabase, user]);
 
   async function signInWithSpotify() {
     const { data, error } = await signInWithOAuth({
@@ -295,16 +298,23 @@ const App = () => {
         )}
 
         <div className="relative w-full h-full border-b">
-          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/15 to-gray-600/10 backdrop-blur-2xl rounded-lg drop-shadow-2xl border border-white/10 
-                          before:absolute before:inset-0 before:bg-gradient-to-t before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none">
+          <div
+            className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/15 to-gray-600/10 backdrop-blur-2xl rounded-lg drop-shadow-2xl border border-white/10 
+                          before:absolute before:inset-0 before:bg-gradient-to-t before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none"
+          >
             <div className="flex justify-between items-center mx-2 p-1">
               <Button
                 onClick={clearMessages}
                 className=" p-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400"
                 title="Reload chat (Ctrl+Shift+D / Cmd+Shift+D)"
+                disabled={!signedIn}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
+
+              <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 via-green-500 to-green-300 bg-clip-text text-transparent drop-shadow-lg animate-pulse">
+                Vibe.ai
+              </h1>
 
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
@@ -371,18 +381,29 @@ const App = () => {
                 >
                   <div className="bg-gradient-to-br from-stone-700/40 to-stone-800/40 backdrop-blur-sm border border-stone-600/30 rounded-xl p-8 max-w-md text-center">
                     <div className="flex justify-center mb-4">
-                      <Sparkles className="w-12 h-12 text-green-400 animate-pulse" />
+                      {signedIn ? (
+                        <Sparkles className="w-12 h-12 text-green-400 animate-pulse" />
+                      ) : (
+                        <LogIn className="w-12 h-12 text-orange-400 animate-pulse" />
+                      )}
                     </div>
                     <h3 className="text-xl font-semibold text-stone-100 mb-3">
-                      Welcome to Vibe.ai
+                      {signedIn ? "Welcome to Vibe.ai" : "Sign In Required"}
                     </h3>
                     <p className="text-stone-300 mb-4 leading-relaxed">
-                      I&apos;m here to help you create the perfect playlists for any mood or occasion. 
-                      Connect your Spotify account and let&apos;s get started!
+                      {signedIn
+                        ? "I'm here to help you create the perfect playlists for any mood or occasion. Start typing a message below to begin our conversation!"
+                        : "Please connect your Spotify account to use Vibe.ai's playlist creation features. Click the profile button in the top right to sign in."}
                     </p>
-                    <p className="text-stone-400 text-sm">
-                      Start typing a message below to begin our conversation
-                    </p>
+                    {!signedIn && (
+                      <Button
+                        onClick={signInWithSpotify}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 mx-auto"
+                      >
+                        <LogIn className="w-4 h-4" />
+                        Sign in with Spotify
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -449,20 +470,29 @@ const App = () => {
               <div className="w-full flex items-center justify-center gap-1 z-50">
                 <Input
                   onChange={(e) => setInput(e.target.value)}
-                  className="w-[60%] bg-stone-700/75"
-                  placeholder="playlist for a scenic drive in the alps"
+                  className={`w-[60%] ${
+                    signedIn
+                      ? "bg-stone-700/75"
+                      : "bg-stone-700/50 text-stone-500 cursor-not-allowed"
+                  }`}
+                  placeholder={
+                    signedIn
+                      ? "playlist for a scenic drive in the alps"
+                      : "Sign in to start chatting..."
+                  }
                   value={input}
+                  disabled={!signedIn}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === "Enter" && signedIn) {
                       e.preventDefault();
                       handleSendMessage();
                     }
                   }}
                 />
                 <button
-                  onClick={() => {
-                    handleSendMessage();
-                  }}
+                  onClick={handleSendMessage}
+                  disabled={!signedIn}
+                  className={signedIn ? "" : "opacity-50 cursor-not-allowed"}
                 >
                   <SendHorizontal className="cursor-pointer" />
                 </button>

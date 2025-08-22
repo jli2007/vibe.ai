@@ -30,7 +30,7 @@ public class SupabaseController : ControllerBase
     [HttpGet("get-messages/{userId}")]
     public async Task<ActionResult<MessagesResponse>> GetMessages(string userId)
     {
-        Console.WriteLine("Getting Messages for, " + userId);
+        Console.WriteLine("Getting Messages for: " + userId);
         if (string.IsNullOrEmpty(userId))
         {
             return BadRequest(new MessagesResponse
@@ -58,7 +58,7 @@ public class SupabaseController : ControllerBase
     [HttpPost("save-message")]
     public async Task<ActionResult<MessagesResponse>> SaveMessage([FromBody] CreateMessageRequest request)
     {
-        Console.WriteLine("Saving Messages for, "+ request.UserId);
+        Console.WriteLine("Saving Messages for: "+ request.UserId);
         try
         {
             var jwt = GetJwtFromRequest();
@@ -89,7 +89,7 @@ public class SupabaseController : ControllerBase
     [HttpDelete("clear-messages/{userId}")]
     public async Task<ActionResult<MessagesResponse>> ClearMessages(string userId)
     {
-        Console.WriteLine("Clearing Messages for, "+ userId);
+        Console.WriteLine("Clearing Messages for: "+ userId);
         try
         {
             var jwt = GetJwtFromRequest();
