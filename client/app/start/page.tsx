@@ -35,12 +35,11 @@ import {
 const App = () => {
   const { messages, sendMessage, setMessages } = useChatbot();
   const ref = useChatScroll(messages);
-  const [signedIn, setSignedIn] = useState<boolean>(false);
   const [showAlert, setShowAlert] = useState<boolean>(false);
   const [popoverOpen, setPopoverOpen] = useState<boolean>(false);
   const [showWelcomeInfo, setShowWelcomeInfo] = useState(true);
+  const [isBotTalking, setIsBotTalking] = useState<boolean>(false);
 
-  // info
   const [username, setUsername] = useState<string>("");
   const [pfp, setPfp] = useState<string>("/404profile.png");
   const [input, setInput] = useState<string>(
@@ -48,7 +47,6 @@ const App = () => {
   );
   const [copiedIndex, setCopiedIndex] = useState(null);
 
-  // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
   const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
     useState(showSpotifyPage);
@@ -57,9 +55,12 @@ const App = () => {
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
   useEffect(() => {
+    // Load messages when user changes
     const loadMessages = async () => {
       if (!user) {
         setMessages([]);
+        setUsername("");
+        setPfp("/404profile.png");
         return;
       }
 
@@ -116,6 +117,11 @@ const App = () => {
       return;
     }
 
+    // no need to clear if its already empty
+    if (!messages || messages.length === 0) {
+      return;
+    }
+
     try {
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -149,13 +155,6 @@ const App = () => {
     }
   };
 
-  // set user on load if state is saved //  THIS GOTTA BE FIXED????
-  useEffect(() => {
-    if (user) {
-      setSignedIn(true);
-    }
-  }, [user]);
-
   // ensures mounted/unmounted properly when the visibility of sidebar changes
   useEffect(() => {
     if (showSpotifyPage) setShouldRenderSpotifyPage(true);
@@ -171,46 +170,71 @@ const App = () => {
 
     if (
       sessionStorage.getItem("redirectedAfterLogin") == "true" ||
-      signedIn == true
+      user // Use user instead of user
     ) {
       setShowAlert(true);
     }
 
     const fetchSession = async () => {
-      // Only fetch Spotify profile if user is signed in
-      if (!signedIn || !user) {
+      // Only fetch if user exists
+      if (!user) {
+        setUsername("");
+        setPfp("/404profile.png");
         return;
       }
 
-      const session = await supabase.auth.getSession();
+      try {
+        const session = await supabase.auth.getSession();
+        console.log("SESSION", session);
 
-      console.log("SESSION", session);
+        if (session.data.session?.provider_token) {
+          const accessToken = session.data.session.provider_token;
 
-      const accessToken = session.data.session?.provider_token;
+          try {
+            const res = await fetch(
+              `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/json",
+                },
+                body: JSON.stringify({ accessToken }),
+              }
+            );
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SERVER_HOST}/api/spotify/profile`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken }),
+            if (res.ok) {
+              const contentType = res.headers.get("content-type");
+              if (contentType && contentType.includes("application/json")) {
+                const data = await res.json();
+                console.log("SPOTIFY FETCH DATA", data);
+
+                setUsername(data.displayName || "User");
+                setPfp(
+                  data.images?.[1]?.url ||
+                    data.images?.[0]?.url ||
+                    "/404profile.png"
+                );
+              } else {
+                console.error("Server returned non-JSON response");
+              }
+            } else {
+              console.error("Failed to fetch Spotify profile:", res.status);
+            }
+          } catch (fetchError) {
+            console.error(
+              "Network error fetching Spotify profile:",
+              fetchError
+            );
+          }
         }
-      );
-
-      const data = await res.json();
-
-      console.log("SPOTIFY FETCH DATA", data);
-
-      setUsername(data.displayName);
-      setPfp(data.images[1].url);
-
-      if (!signedIn) {
-        setSignedIn(true);
+      } catch (error) {
+        console.error("Error in fetchSession:", error);
       }
     };
 
     fetchSession();
-  }, [signedIn, supabase, user]);
+  }, [user, supabase]);
 
   async function signInWithSpotify() {
     const { data, error } = await signInWithOAuth({
@@ -256,7 +280,7 @@ const App = () => {
   };
 
   const getInputPlaceholder = () => {
-    if (!signedIn) {
+    if (!user) {
       return "Sign in to start chatting...";
     }
     if (showSpotifyFunctions) {
@@ -265,9 +289,9 @@ const App = () => {
     return "playlist for a scenic drive in the alps";
   };
 
-  const handleMessageSend = () => {
+  const handleMessageSend = async () => {
     // Don't allow sending messages if user is not signed in
-    if (!signedIn) {
+    if (!user) {
       return;
     }
 
@@ -276,9 +300,43 @@ const App = () => {
       if (showWelcomeInfo) {
         setShowWelcomeInfo(false);
       }
-      sendMessage(input);
-      setInput("");
+
+      setIsBotTalking(true);
+
+      try {
+        await sendMessage(input);
+        setInput("");
+      } catch (error) {
+        console.error("Error sending message:", error);
+      } finally {
+        // Clear loading state after message is sent
+        setIsBotTalking(false);
+      }
     }
+  };
+
+  const TypingIndicator = () => {
+    return (
+      <div className="flex items-end gap-3 justify-start">
+        <div className="flex-shrink-0">
+          <Avatar className="w-8 h-8">
+            <AvatarImage src="/vibe.png" />
+            <AvatarFallback>bot</AvatarFallback>
+          </Avatar>
+        </div>
+
+        <div className="p-3 rounded-lg bg-gray-300 text-gray-800 max-w-xl">
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-gray-600">Vibe is thinking</span>
+            <div className="flex gap-1 ml-2">
+              <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+              <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+              <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -306,12 +364,12 @@ const App = () => {
 
                     <div className="p-4">
                       <h1 className="text-stone-100 text-sm font-medium mb-4">
-                        {signedIn
+                        {user
                           ? `Spotify Functions - ${username}`
                           : "Sign in with Spotify first"}
                       </h1>
 
-                      {showSpotifyFunctions && signedIn && (
+                      {showSpotifyFunctions && user && (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between mb-4">
                             <h2 className="text-stone-300 text-sm font-medium tracking-wide">
@@ -472,7 +530,7 @@ const App = () => {
                       )}
 
                       {/* CHANGE: Added message when functions aren't visible yet */}
-                      {!showSpotifyFunctions && signedIn && (
+                      {!showSpotifyFunctions && user && (
                         <p className="text-stone-400 text-xs">
                           Functions will appear after you send a message
                         </p>
@@ -504,7 +562,7 @@ const App = () => {
 
         <div className="relative w-full h-full border-b">
           <div
-            className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/25 to-gray-600/20 backdrop-blur-xl rounded-lg drop-shadow-2xl border border-white/10 
+            className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/45 to-gray-600/30 backdrop-blur-md rounded-lg drop-shadow-2xl border border-white/10 
                           before:absolute before:inset-0 before:bg-gradient-to-t before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none"
           >
             <div className="flex justify-between items-center mx-2 p-1">
@@ -512,7 +570,7 @@ const App = () => {
                 onClick={clearMessages}
                 className=" p-2 bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/50 text-blue-400"
                 title="Reload chat (Ctrl+Shift+D / Cmd+Shift+D)"
-                disabled={!signedIn}
+                disabled={!user}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
@@ -524,7 +582,7 @@ const App = () => {
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button className="p-5 text-lg border-1 border-green1/70 text-green1 cursor-pointer bg-green2/5">
-                    {signedIn ? (
+                    {user ? (
                       <Avatar>
                         <AvatarImage src={pfp} />
                         <AvatarFallback>profile</AvatarFallback>
@@ -541,7 +599,7 @@ const App = () => {
                   <div className="grid gap-7">
                     <div className="space-y-2">
                       <h4 className="font-medium leading-none flex items-center justify-center w-full">
-                        {!signedIn
+                        {!user
                           ? "Connect Spotify to Vibe.ai"
                           : "Disconnect Spotify to Vibe.ai"}
                       </h4>
@@ -550,18 +608,22 @@ const App = () => {
                     <div className="flex items-center justify-center w-full my-5">
                       <Button
                         onClick={() => {
-                          if (!signedIn) {
+                          if (!user) {
                             signInWithSpotify();
                           } else {
                             signOut();
-                            setSignedIn(false);
+                            setUsername("");
+                            setPfp("/404profile.png");
+                            setMessages([]);
+                            setShowWelcomeInfo(true);
+                            setShowSpotifyFunctions(false);
                             setPopoverOpen(false);
                             setShowAlert(true);
                           }
                         }}
                         className="p-3 rounded-lg bg-stone-700/50"
                       >
-                        {!signedIn ? "configure" : "unconfigure"}
+                        {!user ? "configure" : "unconfigure"}
                       </Button>
                     </div>
                   </div>
@@ -586,21 +648,21 @@ const App = () => {
                 >
                   <div className="bg-gradient-to-br from-stone-700/40 to-stone-800/40 backdrop-blur-sm border border-stone-600/30 rounded-xl p-8 max-w-md text-center">
                     <div className="flex justify-center mb-4">
-                      {signedIn ? (
+                      {user ? (
                         <Sparkles className="w-12 h-12 text-green-400 animate-pulse" />
                       ) : (
                         <LogIn className="w-12 h-12 text-orange-400 animate-pulse" />
                       )}
                     </div>
                     <h3 className="text-xl font-semibold text-stone-100 mb-3">
-                      {signedIn ? "Welcome to Vibe.ai" : "Sign In Required"}
+                      {user ? "Welcome to Vibe.ai" : "Sign In Required"}
                     </h3>
                     <p className="text-stone-300 mb-4 leading-relaxed">
-                      {signedIn
+                      {user
                         ? "I'm here to help you create the perfect playlists for any mood or occasion. Start typing a message below to begin our conversation!"
                         : "Please connect your Spotify account to use Vibe.ai's playlist creation features. Click the profile button in the top right to sign in."}
                     </p>
-                    {!signedIn && (
+                    {!user && (
                       <Button
                         onClick={signInWithSpotify}
                         className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg flex items-center gap-2 mx-auto"
@@ -668,6 +730,18 @@ const App = () => {
                   </div>
                 </div>
               ))}
+              <AnimatePresence>
+                {isBotTalking && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <TypingIndicator />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           <div className="w-full h-full flex items-end justify-center pb-5 text-white">
@@ -676,15 +750,19 @@ const App = () => {
                 <Input
                   onChange={(e) => setInput(e.target.value)}
                   className={`w-[60%] ${
-                    signedIn
+                    user && !isBotTalking
                       ? "bg-stone-700/75"
                       : "bg-stone-700/50 text-stone-500 cursor-not-allowed"
                   }`}
-                  placeholder={getInputPlaceholder()}
+                  placeholder={
+                    isBotTalking
+                      ? "Vibe is responding..."
+                      : getInputPlaceholder()
+                  }
                   value={input}
-                  disabled={!signedIn}
+                  disabled={!user || isBotTalking}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && signedIn) {
+                    if (e.key === "Enter" && user && !isBotTalking) {
                       e.preventDefault();
                       handleMessageSend();
                     }
@@ -692,10 +770,16 @@ const App = () => {
                 />
                 <button
                   onClick={handleMessageSend}
-                  disabled={!signedIn}
-                  className={signedIn ? "" : "opacity-50 cursor-not-allowed"}
+                  disabled={!user || isBotTalking}
+                  className={
+                    user && isBotTalking ? "" : "opacity-50 cursor-not-allowed"
+                  }
                 >
-                  <SendHorizontal className="cursor-pointer" />
+                  {isBotTalking ? (
+                    <div className="w-5 h-5 border-2 border-stone-500 border-t-green-400 rounded-full animate-spin"></div>
+                  ) : (
+                    <SendHorizontal className="cursor-pointer" />
+                  )}
                 </button>
               </div>
             </div>
@@ -714,7 +798,7 @@ const App = () => {
                     message={
                       sessionStorage.getItem("redirectedAfterLogin") == "true"
                         ? "IN"
-                        : signedIn
+                        : user
                         ? "STATE"
                         : "OUT"
                     }

@@ -66,11 +66,7 @@ const useChatbot = () => {
     // Create user message
     const userMessage: MessageDTO = { text: message, sender: "user" };
     
-    const newMessages: MessageDTO[] = [
-      ...messages,
-      userMessage,
-    ];
-    setMessages(newMessages);
+    setMessages(prev => [...prev, userMessage]);
 
     // Save user message to database
     if (user?.id) {
@@ -97,8 +93,7 @@ const useChatbot = () => {
         sender: "bot" 
       };
       
-      const finalMessages = [...newMessages, botMessage];
-      setMessages(finalMessages);
+      setMessages(prev => [...prev, botMessage]);
 
       // Save bot message to database
       if (user?.id) {

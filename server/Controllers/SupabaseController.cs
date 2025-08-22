@@ -102,7 +102,6 @@ public class SupabaseController : ControllerBase
 
             if (response.Success)
             {
-                // Return the default starting message after clearing
                 return Ok(new
                 {
                     success = true,

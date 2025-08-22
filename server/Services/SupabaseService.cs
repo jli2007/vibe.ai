@@ -170,7 +170,7 @@ namespace server.Services
                 {
                     UserId = userId,
                     Text = "",
-                    Sender = ""
+                    Sender = "bot"
                 };
 
                 return await SaveMessage(startingMessage, jwt);
