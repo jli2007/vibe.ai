@@ -13,7 +13,7 @@ export interface MessagesResponse {
 }
 
 const useChatbot = () => {
-  const [messages, setMessages] = useState<MessageDTO[]>([{ text: "How can I help you today?", sender: "bot" }]);
+  const [messages, setMessages] = useState<MessageDTO[]>([]);
   const { user, supabase } = useAuth();
 
   // Helper function to save message to database

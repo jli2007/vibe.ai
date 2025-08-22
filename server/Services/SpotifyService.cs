@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
+using server.DTOS;
 
 namespace server.Services
 {
@@ -14,7 +15,7 @@ namespace server.Services
         }
 
         public async Task<PrivateUser> GetCurrentUserProfileAsync(string accessToken)
-        {  
+        {
             if (string.IsNullOrWhiteSpace(accessToken)) throw new ArgumentException("accessToken is required");
 
             if (accessToken.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -23,7 +24,7 @@ namespace server.Services
             var spotify = await GetClientAsync(accessToken);
             return await spotify.UserProfile.Current();
         }
-        
+
         public async Task<string?> CreatePlaylistFromSpecAsync(string accessToken, string userId, PlaylistSpec spec)
         {
             var spotify = await GetClientAsync(accessToken);
@@ -67,7 +68,7 @@ namespace server.Services
                     if (string.IsNullOrWhiteSpace(t)) continue;
                     var searchRequest = new SearchRequest(SearchRequest.Types.Track, t) { Limit = 1 };
                     var search = await spotify.Search.Item(searchRequest);
-                    
+
                     if (search?.Tracks?.Items != null && search.Tracks.Items.Count > 0)
                     {
                         var found = search.Tracks.Items[0];
@@ -100,6 +101,14 @@ namespace server.Services
 
             // return whatever URIs we resolved (possibly empty)
             return await Task.FromResult(uris);
+        }
+
+        public async Task<Paging<FullPlaylist>> GetUserPlaylists(string accessToken)
+        {
+            var spotify = await GetClientAsync(accessToken);
+
+            var playlists = await spotify.Playlists.CurrentUsers();
+            return await Task.FromResult(playlists);
         }
     }
 }

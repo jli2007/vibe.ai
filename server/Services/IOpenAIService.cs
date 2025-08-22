@@ -1,4 +1,5 @@
 using OpenAI.Chat;
+using server.DTOS;
 
 namespace server.Services {
     public interface IOpenAIService

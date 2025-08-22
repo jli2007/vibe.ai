@@ -106,10 +106,6 @@ public class SupabaseController : ControllerBase
                 return Ok(new
                 {
                     success = true,
-                    messages = new[]
-                    {
-                        new { text = "How can I help you today?", sender = "bot" }
-                    }
                 });
             }
             else

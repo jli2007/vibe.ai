@@ -169,8 +169,8 @@ namespace server.Services
                 var startingMessage = new CreateMessageRequest
                 {
                     UserId = userId,
-                    Text = "How can I help you today?",
-                    Sender = "bot"
+                    Text = "",
+                    Sender = ""
                 };
 
                 return await SaveMessage(startingMessage, jwt);

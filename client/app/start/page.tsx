@@ -9,6 +9,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,12 +43,17 @@ const App = () => {
   // info
   const [username, setUsername] = useState<string>("");
   const [pfp, setPfp] = useState<string>("/404profile.png");
-  const [input, setInput] = useState<string>("a playlist for a scenic drive in the alps");
+  const [input, setInput] = useState<string>(
+    "a playlist for a scenic drive in the alps"
+  );
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   // pages
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
+    useState(showSpotifyPage);
+  const [showSpotifyFunctions, setShowSpotifyFunctions] =
+    useState<boolean>(false);
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
   useEffect(() => {
@@ -81,6 +93,7 @@ const App = () => {
           // Hide welcome info if there are existing messages
           if (formattedMessages.length > 0) {
             setShowWelcomeInfo(false);
+            setShowSpotifyFunctions(true);
           }
         } else {
           console.error("Error loading messages:", data.error);
@@ -99,6 +112,7 @@ const App = () => {
     if (!user?.id) {
       setMessages([]);
       setShowWelcomeInfo(true);
+      setShowSpotifyFunctions(false);
       return;
     }
 
@@ -126,6 +140,7 @@ const App = () => {
       if (data.success) {
         setMessages([]);
         setShowWelcomeInfo(true);
+        setShowSpotifyFunctions(false);
       } else {
         console.error("Error clearing messages:", data.error);
       }
@@ -162,6 +177,7 @@ const App = () => {
     }
 
     const fetchSession = async () => {
+      // Only fetch Spotify profile if user is signed in
       if (!signedIn || !user) {
         return;
       }
@@ -187,6 +203,10 @@ const App = () => {
 
       setUsername(data.displayName);
       setPfp(data.images[1].url);
+
+      if (!signedIn) {
+        setSignedIn(true);
+      }
     };
 
     fetchSession();
@@ -235,7 +255,22 @@ const App = () => {
     }
   };
 
-  const handleSendMessage = () => {
+  const getInputPlaceholder = () => {
+    if (!signedIn) {
+      return "Sign in to start chatting...";
+    }
+    if (showSpotifyFunctions) {
+      return "Use functions on the left, or describe a new playlist...";
+    }
+    return "playlist for a scenic drive in the alps";
+  };
+
+  const handleMessageSend = () => {
+    // Don't allow sending messages if user is not signed in
+    if (!signedIn) {
+      return;
+    }
+
     if (input.trim()) {
       // Hide welcome info when first message is sent
       if (showWelcomeInfo) {
@@ -263,16 +298,186 @@ const App = () => {
                   transition={{ duration: 0.4 }}
                   className="absolute w-full h-full bg-stone-900 flex justify-start border-r"
                 >
-                  <div className="w-full flex justify-center">
+                  <div className="w-full h-full flex flex-col">
                     <ArrowLeftFromLine
-                      className="absolute text-stone-100/60 right-1 top-1/2 cursor-pointer"
+                      className="absolute text-stone-100/60 right-1 top-2 cursor-pointer z-10"
                       onClick={() => setShowSpotifyPage(false)}
                     />
-                    <h1 className="text-stone-100 p-2">
-                      {username !== ""
-                        ? "your spotify functions are here, " + username
-                        : "sign in with spotify first"}
-                    </h1>
+
+                    <div className="p-4">
+                      <h1 className="text-stone-100 text-sm font-medium mb-4">
+                        {signedIn
+                          ? `Spotify Functions - ${username}`
+                          : "Sign in with Spotify first"}
+                      </h1>
+
+                      {showSpotifyFunctions && signedIn && (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-stone-300 text-sm font-medium tracking-wide">
+                              Spotify Actions
+                            </h2>
+                            <Button
+                              onClick={clearMessages}
+                              className="bg-slate-600/20 hover:bg-slate-600/40 border border-slate-500/30 text-slate-300 text-xs px-3 py-1.5 h-auto flex items-center gap-1"
+                              title="Start a new request"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              New Request
+                            </Button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {/* Create New Playlist */}
+                            <div className="relative group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <Button
+                                className="relative w-full text-left justify-start bg-green-600/15 hover:bg-green-600/25 border border-green-500/30 text-green-200 text-sm h-auto py-4 px-4 rounded-lg backdrop-blur-sm overflow-hidden"
+                                onClick={() => {
+                                  console.log("Create new playlist clicked");
+                                }}
+                              >
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-green-400/10 to-transparent rounded-full -translate-y-4 translate-x-4"></div>
+                                <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-green-500/10 to-transparent rounded-full translate-y-2 -translate-x-2"></div>
+
+                                {/* Spotify icon placeholder */}
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-green-400/20 rounded-full flex items-center justify-center">
+                                  <div className="w-3 h-3 bg-green-400/40 rounded-full"></div>
+                                </div>
+
+                                <div className="flex flex-col items-start relative z-10">
+                                  <span className="font-semibold text-green-100">
+                                    Create New Playlist
+                                  </span>
+                                  <span className="text-xs text-green-300/80 mt-0.5">
+                                    Generate a fresh playlist with all
+                                    suggestions
+                                  </span>
+                                </div>
+                              </Button>
+                            </div>
+
+                            {/* Add to Existing Playlist */}
+                            <div className="relative group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <div className="relative w-full bg-blue-600/15 hover:bg-blue-600/25 border border-blue-500/30 rounded-lg backdrop-blur-sm overflow-hidden p-4">
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-blue-400/10 to-transparent rounded-full -translate-y-4 translate-x-4"></div>
+                                <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full translate-y-2 -translate-x-2"></div>
+
+                                {/* Playlist icon placeholder */}
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-blue-400/20 rounded-full flex items-center justify-center">
+                                  <div className="w-2 h-2 bg-blue-400/40 rounded-sm"></div>
+                                  <div className="w-1 h-1 bg-blue-400/40 rounded-full ml-0.5"></div>
+                                </div>
+
+                                <div className="flex flex-col space-y-3 relative z-10">
+                                  <div className="flex flex-col items-start">
+                                    <span className="font-semibold text-blue-100">
+                                      Add to Existing Playlist
+                                    </span>
+                                    <span className="text-xs text-blue-300/80 mt-0.5">
+                                      Select songs to add to your playlists
+                                    </span>
+                                  </div>
+
+                                  <Select>
+                                    <SelectTrigger className="w-full bg-blue-600/20 border-blue-500/40 text-blue-200 text-xs h-8">
+                                      <SelectValue placeholder="Choose playlist..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-stone-800 border-blue-500/40">
+                                      <SelectItem value="liked">
+                                        Liked Songs
+                                      </SelectItem>
+                                      <SelectItem value="chill">
+                                        Chill Vibes
+                                      </SelectItem>
+                                      <SelectItem value="workout">
+                                        Workout Mix
+                                      </SelectItem>
+                                      <SelectItem value="road-trip">
+                                        Road Trip Hits
+                                      </SelectItem>
+                                      <SelectItem value="focus">
+                                        Focus Music
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Save Individual Songs */}
+                            <div className="relative group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <Button
+                                className="relative w-full text-left justify-start bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 text-purple-200 text-sm h-auto py-4 px-4 rounded-lg backdrop-blur-sm overflow-hidden"
+                                onClick={() => {
+                                  console.log("Save individual songs clicked");
+                                }}
+                              >
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-purple-400/10 to-transparent rounded-full -translate-y-4 translate-x-4"></div>
+                                <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-full translate-y-2 -translate-x-2"></div>
+
+                                {/* Heart icon placeholder */}
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-purple-400/20 rounded-full flex items-center justify-center">
+                                  <div className="w-3 h-3 bg-purple-400/40 rounded-full relative">
+                                    <div className="absolute top-0 left-1 w-1 h-1 bg-purple-400/60 rounded-full"></div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col items-start relative z-10">
+                                  <span className="font-semibold text-purple-100">
+                                    Save Individual Songs
+                                  </span>
+                                  <span className="text-xs text-purple-300/80 mt-0.5">
+                                    Add selected tracks to your library
+                                  </span>
+                                </div>
+                              </Button>
+                            </div>
+
+                            {/* Preview Songs */}
+                            <div className="relative group">
+                              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-lg blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <Button
+                                className="relative w-full text-left justify-start bg-orange-600/15 hover:bg-orange-600/25 border border-orange-500/30 text-orange-200 text-sm h-auto py-4 px-4 rounded-lg backdrop-blur-sm overflow-hidden"
+                                onClick={() => {
+                                  console.log("Preview songs clicked");
+                                }}
+                              >
+                                {/* Background decoration */}
+                                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-400/10 to-transparent rounded-full -translate-y-4 translate-x-4"></div>
+                                <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-orange-500/10 to-transparent rounded-full translate-y-2 -translate-x-2"></div>
+
+                                {/* Play icon placeholder */}
+                                <div className="absolute top-2 right-2 w-6 h-6 bg-orange-400/20 rounded-full flex items-center justify-center">
+                                  <div className="w-0 h-0 border-l-[4px] border-l-orange-400/60 border-y-[2px] border-y-transparent ml-0.5"></div>
+                                </div>
+
+                                <div className="flex flex-col items-start relative z-10">
+                                  <span className="font-semibold text-orange-100">
+                                    Preview Songs
+                                  </span>
+                                  <span className="text-xs text-orange-300/80 mt-0.5">
+                                    Listen to 30-second previews
+                                  </span>
+                                </div>
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CHANGE: Added message when functions aren't visible yet */}
+                      {!showSpotifyFunctions && signedIn && (
+                        <p className="text-stone-400 text-xs">
+                          Functions will appear after you send a message
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -299,7 +504,7 @@ const App = () => {
 
         <div className="relative w-full h-full border-b">
           <div
-            className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/15 to-gray-600/10 backdrop-blur-2xl rounded-lg drop-shadow-2xl border border-white/10 
+            className="absolute top-2 left-1/2 transform -translate-x-1/2 z-50 w-[97.5%] bg-gradient-to-tr from-gray-600/25 to-gray-600/20 backdrop-blur-xl rounded-lg drop-shadow-2xl border border-white/10 
                           before:absolute before:inset-0 before:bg-gradient-to-t before:from-white/20 before:to-transparent before:rounded-lg before:pointer-events-none"
           >
             <div className="flex justify-between items-center mx-2 p-1">
@@ -332,7 +537,7 @@ const App = () => {
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="bg-stone-900/50 text-stone-100 border-1 border-green1/70">
+                <PopoverContent className="bg-stone-900/90 text-stone-100 border-1 border-green1/70">
                   <div className="grid gap-7">
                     <div className="space-y-2">
                       <h4 className="font-medium leading-none flex items-center justify-center w-full">
@@ -475,22 +680,18 @@ const App = () => {
                       ? "bg-stone-700/75"
                       : "bg-stone-700/50 text-stone-500 cursor-not-allowed"
                   }`}
-                  placeholder={
-                    signedIn
-                      ? "playlist for a scenic drive in the alps"
-                      : "Sign in to start chatting..."
-                  }
+                  placeholder={getInputPlaceholder()}
                   value={input}
                   disabled={!signedIn}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && signedIn) {
                       e.preventDefault();
-                      handleSendMessage();
+                      handleMessageSend();
                     }
                   }}
                 />
                 <button
-                  onClick={handleSendMessage}
+                  onClick={handleMessageSend}
                   disabled={!signedIn}
                   className={signedIn ? "" : "opacity-50 cursor-not-allowed"}
                 >

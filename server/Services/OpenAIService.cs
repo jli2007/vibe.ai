@@ -1,26 +1,11 @@
 using System;
-using System.Threading.Tasks;
 using System.Text.Json; 
 using OpenAI;
 using OpenAI.Chat;
+using server.DTOS;
 
 namespace server.Services
 {
-    public class PlaylistSpec
-    {
-        public string? Name { get; set; }               
-        public string? Description { get; set; }        
-        public string[]? SeedArtists { get; set; }       
-        public string[]? SeedTracks { get; set; }
-        public string[]? SeedGenres { get; set; }
-        public double? TargetTempo { get; set; }
-        public double? TargetEnergy { get; set; }
-        public double? TargetValence { get; set; }
-        public double? TargetDanceability { get; set; }
-        public int? Limit { get; set; }
-        public string? Market { get; set; }
-    }
-
     public class OpenAIService : IOpenAIService
     {
         private static ChatClient? _client;
