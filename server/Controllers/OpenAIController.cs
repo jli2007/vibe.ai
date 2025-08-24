@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using server.Services;
+using server.DTOS;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -13,17 +14,12 @@ public class OpenAIController : ControllerBase
         _openAIService = openAIService;
     }
 
-    public class TokenDTo
-    {
-        public string text{ get; set; } = string.Empty;
-    }
-
     // POST: get openai response from prompt
     [HttpPost("response")]
     public async Task<IActionResult> GetResponse([FromBody] TokenDTo body)
     {
-        Console.WriteLine($"Body text: {body.text}");
-        var res = await _openAIService.UseOpenAI(body.text);
+        Console.WriteLine($"Body text: {body.AccessToken}");
+        var res = await _openAIService.UseOpenAI(body.AccessToken);
         return Ok(res);
     }
 }

@@ -6,7 +6,7 @@ using server.DTOS;
 [ApiController]
 [Route("api/[controller]")]
 public class SpotifyController : ControllerBase
-{    
+{
     // POST: get user spotify profile
     [HttpPost("profile")]
     public async Task<IActionResult> GetProfile([FromBody] TokenDTo body) // request (JSON) --> TokenDTO object with [FromBody]
@@ -15,4 +15,7 @@ public class SpotifyController : ControllerBase
         var config = await spotifyService.GetCurrentUserProfileAsync(body.AccessToken);
         return Ok(config);
     }
+
+    // [HttpPost("create-playlist")]
+    // public async Task<IActionResult> CreatePlaylist([FromBody] )
 }

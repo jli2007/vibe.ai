@@ -48,10 +48,9 @@ const App = () => {
   const [copiedIndex, setCopiedIndex] = useState(null);
 
   const [showSpotifyPage, setShowSpotifyPage] = useState<boolean>(true);
-  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] =
-    useState(showSpotifyPage);
-  const [showSpotifyFunctions, setShowSpotifyFunctions] =
-    useState<boolean>(false);
+  const [shouldRenderSpotifyPage, setShouldRenderSpotifyPage] = useState(showSpotifyPage);
+  const [showSpotifyFunctions, setShowSpotifyFunctions] = useState<boolean>(false);
+  const [needsSpotifyReauth, setNeedsSpotifyReauth] = useState<boolean>(false);
   const { supabase, signInWithOAuth, user, signOut } = useAuth();
 
   useEffect(() => {
@@ -175,20 +174,58 @@ const App = () => {
       setShowAlert(true);
     }
 
+    const handleMissingSpotifyToken = () => {
+      // Set flag to show that Spotify needs re-authentication
+      setNeedsSpotifyReauth(true);
+
+      // Set fallback values but don't sign the user out completely
+      setUsername(user?.user_metadata?.full_name || user?.email || "User");
+      setPfp("/404profile.png");
+
+      console.log("Spotify re-authentication required");
+    };
+
     const fetchSession = async () => {
       // Only fetch if user exists
       if (!user) {
         setUsername("");
         setPfp("/404profile.png");
+        setNeedsSpotifyReauth(false);
         return;
       }
 
       try {
         const session = await supabase.auth.getSession();
-        console.log("SESSION", session);
+        console.log("INITIAL SESSION", session);
 
-        if (session.data.session?.provider_token) {
-          const accessToken = session.data.session.provider_token;
+        let currentSession = session.data.session;
+
+        // If we have a session but no provider_token, try to refresh
+        if (currentSession && !currentSession.provider_token) {
+          console.log(
+            "No provider token found, attempting to refresh session..."
+          );
+
+          const { data: refreshData, error: refreshError } =
+            await supabase.auth.refreshSession();
+
+          if (refreshError) {
+            console.error("Error refreshing session:", refreshError);
+            handleMissingSpotifyToken();
+            return;
+          }
+
+          // Use the refreshed session
+          currentSession = refreshData.session;
+          console.log("REFRESHED SESSION", currentSession);
+        }
+
+        // Now check for provider token
+        if (currentSession?.provider_token) {
+          // Reset the reauth flag since we have a token
+          setNeedsSpotifyReauth(false);
+
+          const accessToken = currentSession.provider_token;
 
           try {
             const res = await fetch(
@@ -217,22 +254,34 @@ const App = () => {
                 );
               } else {
                 console.error("Server returned non-JSON response");
+                handleMissingSpotifyToken();
               }
             } else {
               console.error("Failed to fetch Spotify profile:", res.status);
+              // If it's a 401, the token might be expired
+              if (res.status === 401) {
+                handleMissingSpotifyToken();
+              } else {
+                handleMissingSpotifyToken();
+              }
             }
           } catch (fetchError) {
             console.error(
               "Network error fetching Spotify profile:",
               fetchError
             );
+            handleMissingSpotifyToken();
           }
+        } else {
+          // Still no provider token after refresh
+          console.warn("No provider token available after refresh");
+          handleMissingSpotifyToken();
         }
       } catch (error) {
         console.error("Error in fetchSession:", error);
+        handleMissingSpotifyToken();
       }
     };
-
     fetchSession();
   }, [user, supabase]);
 
@@ -267,6 +316,28 @@ const App = () => {
       }
       return part;
     });
+  };
+
+  // Add a function to handle Spotify re-authentication
+  const handleSpotifyReauth = async () => {
+    try {
+      // First, try to sign out and sign back in with Spotify
+      const { error } = await signInWithOAuth({
+        provider: "spotify",
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_CLIENT_HOST}/start`,
+        },
+      });
+
+      if (error) {
+        console.error("Error re-authenticating with Spotify:", error);
+      } else {
+        sessionStorage.setItem("redirectedAfterLogin", "true");
+        setNeedsSpotifyReauth(false);
+      }
+    } catch (error) {
+      console.error("Error in Spotify re-authentication:", error);
+    }
   };
 
   const copyToClipboard = async (text: string, index: any) => {
@@ -339,6 +410,29 @@ const App = () => {
     );
   };
 
+  const SpotifyReauthNotification = () => {
+    if (!needsSpotifyReauth || !user) return null;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute top-16 left-1/2 transform -translate-x-1/2 z-40 bg-amber-600/20 backdrop-blur-md border border-amber-500/30 rounded-lg p-3 mx-4"
+      >
+        <div className="flex items-center gap-3 text-amber-200">
+          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></div>
+          <span className="text-sm">Spotify connection expired</span>
+          <Button
+            onClick={handleSpotifyReauth}
+            className="bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 text-amber-200 text-xs px-3 py-1 h-auto"
+          >
+            Reconnect
+          </Button>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <div className="relative w-screen md:h-screen h-auto min-h-screen bg-stone-800">
       <div className="flex justify-center flex-row w-full h-full">
@@ -364,9 +458,19 @@ const App = () => {
 
                     <div className="p-4">
                       <h1 className="text-stone-100 text-sm font-medium mb-4">
-                        {user
-                          ? `Spotify Functions - ${username}`
-                          : "Sign in with Spotify first"}
+                        {user ? (
+                          <div className="flex items-center gap-2">
+                            <span>{`Spotify Functions - ${username}`}</span>
+                            {needsSpotifyReauth && (
+                              <div
+                                className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"
+                                title="Spotify needs reconnection"
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          "Sign in with Spotify first"
+                        )}
                       </h1>
 
                       {showSpotifyFunctions && user && (
@@ -488,7 +592,7 @@ const App = () => {
 
                                 <div className="flex flex-col items-start relative z-10">
                                   <span className="font-semibold text-purple-100">
-                                    Save Individual Songs
+                                    Individual Songs
                                   </span>
                                   <span className="text-xs text-purple-300/80 mt-0.5">
                                     Add selected tracks to your library
@@ -631,6 +735,8 @@ const App = () => {
               </Popover>
             </div>
           </div>
+
+          <SpotifyReauthNotification />
 
           <div
             className="absolute inset-0 overflow-y-auto p-4 pt-16 pb-28"
